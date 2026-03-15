@@ -86,17 +86,3 @@ export type {
   SerializedResultOk,
 } from './serialize';
 
-export {
-  analyzeProject,
-  renderCatalog,
-  renderDiagnostics,
-  renderGraph,
-} from './tooling';
-export type {
-  BoundaryEntry,
-  BoundaryMapping,
-  CatalogEntry,
-  FunctionEntry,
-  ProjectAnalysis,
-  ToolingDiagnostic,
-} from './tooling';
