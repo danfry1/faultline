@@ -1,0 +1,22 @@
+{
+  "name": "faultline-monorepo",
+  "version": "0.0.0",
+  "private": true,
+  "type": "module",
+  "packageManager": "bun@1.3.6",
+  "workspaces": [
+    "packages/*"
+  ],
+  "scripts": {
+    "build": "bun --filter '*' build",
+    "test": "bun --filter '*' test",
+    "typecheck": "bun --filter '*' typecheck",
+    "lint": "oxlint .",
+    "format": "oxlint --fix .",
+    "cli": "bun run packages/faultline-cli/src/index.ts"
+  },
+  "devDependencies": {
+    "oxlint": "^0.16.0",
+    "typescript": "^5.9.3"
+  }
+}
