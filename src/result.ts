@@ -1,0 +1,589 @@
+import type { AppError, ContextFrame } from './error';
+import { combinedError } from './system-errors';
+import { SystemErrors } from './system-errors';
+import { fromUnknown } from './from-unknown';
+
+type TagsOf<E extends AppError> = E['_tag'];
+
+type ExhaustiveMatchHandlers<T, E extends AppError, R> = {
+  readonly ok: (value: T) => R;
+} & {
+  readonly [K in TagsOf<E>]: (error: Extract<E, { _tag: K }>) => R;
+};
+
+type PartialMatchHandlers<T, E extends AppError, R> = {
+  readonly ok: (value: T) => R;
+  readonly _: (error: E) => R;
+} & Partial<{
+  readonly [K in TagsOf<E>]: (error: Extract<E, { _tag: K }>) => R;
+}>;
+
+type MatchHandlers<T, E extends AppError, R> =
+  | ExhaustiveMatchHandlers<T, E, R>
+  | PartialMatchHandlers<T, E, R>;
+
+export interface ResultOk<T, E extends AppError = never> {
+  readonly _type: 'ok';
+  readonly value: T;
+  map<U>(fn: (value: T) => U): Result<U, E>;
+  mapErr<E2 extends AppError>(fn: (error: E) => E2): Result<T, E2>;
+  andThen<U, E2 extends AppError>(
+    fn: (value: T) => Result<U, E2>,
+  ): Result<U, E | E2>;
+  catchTag<Tag extends TagsOf<E>, U = T, E2 extends AppError = never>(
+    tag: Tag,
+    handler: (error: Extract<E, { _tag: Tag }>) => Result<U, E2>,
+  ): Result<T | U, Exclude<E, { _tag: Tag }> | E2>;
+  match<R>(handlers: MatchHandlers<T, E, R>): R;
+  tap(fn: (value: T) => void): Result<T, E>;
+  tapError(fn: (error: E) => void): Result<T, E>;
+  withContext(frame: ContextFrame): Result<T, E>;
+  unwrap(): T;
+  unwrapOr<U>(fallback: U): T;
+  toTask(): TaskResult<T, E>;
+}
+
+export interface ResultErr<T, E extends AppError> {
+  readonly _type: 'err';
+  readonly error: E;
+  map<U>(fn: (value: T) => U): Result<U, E>;
+  mapErr<E2 extends AppError>(fn: (error: E) => E2): Result<T, E2>;
+  andThen<U, E2 extends AppError>(
+    fn: (value: T) => Result<U, E2>,
+  ): Result<U, E | E2>;
+  catchTag<Tag extends TagsOf<E>, U = T, E2 extends AppError = never>(
+    tag: Tag,
+    handler: (error: Extract<E, { _tag: Tag }>) => Result<U, E2>,
+  ): Result<T | U, Exclude<E, { _tag: Tag }> | E2>;
+  match<R>(handlers: MatchHandlers<T, E, R>): R;
+  tap(fn: (value: T) => void): Result<T, E>;
+  tapError(fn: (error: E) => void): Result<T, E>;
+  withContext(frame: ContextFrame): Result<T, E>;
+  unwrap(): never;
+  unwrapOr<U>(fallback: U): U;
+  toTask(): TaskResult<T, E>;
+}
+
+export type Result<T, E extends AppError = never> =
+  | ResultOk<T, E>
+  | ResultErr<T, E>;
+
+export interface AttemptOptions<E extends AppError> {
+  readonly mapUnknown?: (thrown: unknown) => E;
+}
+
+export interface AttemptAsyncOptions<
+  E extends AppError,
+  C extends AppError = ReturnType<typeof SystemErrors.Cancelled>,
+> {
+  readonly mapUnknown?: (thrown: unknown) => E;
+  readonly mapAbort?: (reason: unknown) => C;
+}
+
+export interface TaskContext {
+  readonly signal?: AbortSignal;
+}
+
+export interface TaskRunOptions {
+  readonly signal?: AbortSignal;
+}
+
+type TaskExecutor<T, E extends AppError> = (
+  context: TaskContext,
+) => Promise<Result<T, E>>;
+
+function matchErr<T, E extends AppError, R>(
+  error: E,
+  handlers: MatchHandlers<T, E, R>,
+): R {
+  const specificHandler = (handlers as Partial<Record<E['_tag'], (error: E) => R>>)[
+    error._tag as E['_tag']
+  ];
+
+  if (specificHandler) {
+    return specificHandler(error);
+  }
+
+  if ('_' in handlers) {
+    return handlers._(error);
+  }
+
+  throw new Error(`Missing match handler for tag ${error._tag}`);
+}
+
+class OkImpl<T, E extends AppError = never> implements ResultOk<T, E> {
+  readonly _type = 'ok' as const;
+
+  constructor(readonly value: T) {}
+
+  map<U>(fn: (value: T) => U): Result<U, E> {
+    return ok(fn(this.value));
+  }
+
+  mapErr<E2 extends AppError>(_fn: (error: E) => E2): Result<T, E2> {
+    return ok(this.value);
+  }
+
+  andThen<U, E2 extends AppError>(fn: (value: T) => Result<U, E2>): Result<U, E | E2> {
+    return fn(this.value);
+  }
+
+  catchTag<Tag extends TagsOf<E>, U = T, E2 extends AppError = never>(
+    _tag: Tag,
+    _handler: (error: Extract<E, { _tag: Tag }>) => Result<U, E2>,
+  ): Result<T | U, Exclude<E, { _tag: Tag }> | E2> {
+    return ok(this.value);
+  }
+
+  match<R>(handlers: MatchHandlers<T, E, R>): R {
+    return handlers.ok(this.value);
+  }
+
+  tap(fn: (value: T) => void): Result<T, E> {
+    fn(this.value);
+    return this;
+  }
+
+  tapError(_fn: (error: E) => void): Result<T, E> {
+    return this;
+  }
+
+  withContext(_frame: ContextFrame): Result<T, E> {
+    return this;
+  }
+
+  unwrap(): T {
+    return this.value;
+  }
+
+  unwrapOr<U>(_fallback: U): T {
+    return this.value;
+  }
+
+  toTask(): TaskResult<T, E> {
+    return TaskResult.fromResult(this);
+  }
+}
+
+class ErrImpl<T, E extends AppError> implements ResultErr<T, E> {
+  readonly _type = 'err' as const;
+
+  constructor(readonly error: E) {}
+
+  map<U>(_fn: (value: T) => U): Result<U, E> {
+    return new ErrImpl<U, E>(this.error);
+  }
+
+  mapErr<E2 extends AppError>(fn: (error: E) => E2): Result<T, E2> {
+    return err(fn(this.error)) as Result<T, E2>;
+  }
+
+  andThen<U, E2 extends AppError>(
+    _fn: (value: T) => Result<U, E2>,
+  ): Result<U, E | E2> {
+    return new ErrImpl<U, E>(this.error);
+  }
+
+  catchTag<Tag extends TagsOf<E>, U = T, E2 extends AppError = never>(
+    tag: Tag,
+    handler: (error: Extract<E, { _tag: Tag }>) => Result<U, E2>,
+  ): Result<T | U, Exclude<E, { _tag: Tag }> | E2> {
+    if (this.error._tag === tag) {
+      return handler(this.error as Extract<E, { _tag: Tag }>);
+    }
+
+    return this as unknown as Result<T | U, Exclude<E, { _tag: Tag }> | E2>;
+  }
+
+  match<R>(handlers: MatchHandlers<T, E, R>): R {
+    return matchErr(this.error, handlers);
+  }
+
+  tap(_fn: (value: T) => void): Result<T, E> {
+    return this;
+  }
+
+  tapError(fn: (error: E) => void): Result<T, E> {
+    fn(this.error);
+    return this;
+  }
+
+  withContext(frame: ContextFrame): Result<T, E> {
+    return err(this.error.withContext(frame) as E) as Result<T, E>;
+  }
+
+  unwrap(): never {
+    throw this.error;
+  }
+
+  unwrapOr<U>(fallback: U): U {
+    return fallback;
+  }
+
+  toTask(): TaskResult<T, E> {
+    return TaskResult.fromResult(this);
+  }
+}
+
+export function ok<T>(value: T): ResultOk<T, never> {
+  return new OkImpl(value);
+}
+
+export function err<E extends AppError>(error: E): ResultErr<never, E> {
+  return new ErrImpl(error);
+}
+
+export function isOk<T, E extends AppError>(
+  result: Result<T, E>,
+): result is ResultOk<T, E> {
+  return result._type === 'ok';
+}
+
+export function isErr<T, E extends AppError>(
+  result: Result<T, E>,
+): result is ResultErr<T, E> {
+  return result._type === 'err';
+}
+
+export function isErrTag<
+  T,
+  E extends AppError,
+  Tag extends TagsOf<E>,
+>(
+  result: Result<T, E>,
+  tag: Tag,
+): result is ResultErr<T, Extract<E, { _tag: Tag }>> {
+  return result._type === 'err' && result.error._tag === tag;
+}
+
+async function resolveTaskLike<T, E extends AppError>(
+  value:
+    | Result<T, E>
+    | TaskResult<T, E>
+    | Promise<Result<T, E> | TaskResult<T, E>>,
+  context: TaskContext,
+): Promise<Result<T, E>> {
+  const awaited = await value;
+  return awaited instanceof TaskResult ? awaited.run(context) : awaited;
+}
+
+export class TaskResult<T, E extends AppError = never> {
+  constructor(private readonly executor: TaskExecutor<T, E>) {}
+
+  static from<T, E extends AppError>(
+    executor: TaskExecutor<T, E>,
+  ): TaskResult<T, E> {
+    return new TaskResult(executor);
+  }
+
+  static fromResult<T, E extends AppError>(result: Result<T, E>): TaskResult<T, E> {
+    return TaskResult.from(async () => result);
+  }
+
+  static fromPromise<T, E extends AppError>(
+    promise: Promise<Result<T, E>>,
+  ): TaskResult<T, E> {
+    return TaskResult.from(async () => promise);
+  }
+
+  static ok<T>(value: T): TaskResult<T, never> {
+    return TaskResult.fromResult(ok(value));
+  }
+
+  static err<E extends AppError>(error: E): TaskResult<never, E> {
+    return TaskResult.fromResult(err(error));
+  }
+
+  map<U>(fn: (value: T) => U | Promise<U>): TaskResult<U, E> {
+    return TaskResult.from(async (context) =>
+      this.executor(context).then(async (result) =>
+        isOk(result)
+          ? ok(await fn(result.value))
+          : (result as unknown as Result<U, E>),
+      ),
+    );
+  }
+
+  mapErr<E2 extends AppError>(
+    fn: (error: E) => E2 | Promise<E2>,
+  ): TaskResult<T, E2> {
+    return TaskResult.from(async (context) =>
+      this.executor(context).then(async (result) =>
+        isErr(result) ? (err(await fn(result.error)) as Result<T, E2>) : ok(result.value),
+      ),
+    );
+  }
+
+  andThen<U, E2 extends AppError>(
+    fn: (value: T) => Result<U, E2> | Promise<Result<U, E2>>,
+  ): TaskResult<U, E | E2> {
+    return TaskResult.from(async (context) =>
+      this.executor(context).then(async (result) =>
+        isOk(result)
+          ? await fn(result.value)
+          : (result as unknown as Result<U, E | E2>),
+      ),
+    );
+  }
+
+  andThenTask<U, E2 extends AppError>(
+    fn:
+      | ((value: T) => TaskResult<U, E2>)
+      | ((value: T) => Promise<TaskResult<U, E2>>),
+  ): TaskResult<U, E | E2> {
+    return TaskResult.from(async (context) =>
+      this.executor(context).then(async (result) => {
+        if (isErr(result)) {
+          return result as unknown as Result<U, E | E2>;
+        }
+
+        const nextTask = await fn(result.value);
+        return nextTask.run(context);
+      }),
+    );
+  }
+
+  catchTag<Tag extends TagsOf<E>, U = T, E2 extends AppError = never>(
+    tag: Tag,
+    handler: (
+      error: Extract<E, { _tag: Tag }>,
+    ) =>
+      | Result<U, E2>
+      | TaskResult<U, E2>
+      | Promise<Result<U, E2> | TaskResult<U, E2>>,
+  ): TaskResult<T | U, Exclude<E, { _tag: Tag }> | E2> {
+    return TaskResult.from(async (context) =>
+      this.executor(context).then(async (result) => {
+        if (!isErr(result) || result.error._tag !== tag) {
+          return result as unknown as Result<T | U, Exclude<E, { _tag: Tag }> | E2>;
+        }
+
+        return resolveTaskLike(
+          handler(result.error as Extract<E, { _tag: Tag }>),
+          context,
+        );
+      }),
+    );
+  }
+
+  async match<R>(
+    handlers: MatchHandlers<T, E, R | Promise<R>>,
+    options: TaskRunOptions = {},
+  ): Promise<R> {
+    const result = await this.run(options);
+    return result.match(handlers);
+  }
+
+  tap(fn: (value: T) => void | Promise<void>): TaskResult<T, E> {
+    return TaskResult.from(async (context) =>
+      this.executor(context).then(async (result) => {
+        if (isOk(result)) {
+          await fn(result.value);
+        }
+
+        return result;
+      }),
+    );
+  }
+
+  tapError(fn: (error: E) => void | Promise<void>): TaskResult<T, E> {
+    return TaskResult.from(async (context) =>
+      this.executor(context).then(async (result) => {
+        if (isErr(result)) {
+          await fn(result.error);
+        }
+
+        return result;
+      }),
+    );
+  }
+
+  withContext(frame: ContextFrame): TaskResult<T, E> {
+    return TaskResult.from(async (context) =>
+      this.executor(context).then((result) => result.withContext(frame)),
+    );
+  }
+
+  run(options: TaskRunOptions = {}): Promise<Result<T, E>> {
+    return this.executor(options);
+  }
+
+  toPromise(options: TaskRunOptions = {}): Promise<Result<T, E>> {
+    return this.run(options);
+  }
+}
+
+type SuccessTuple<Results extends readonly Result<any, any>[]> = {
+  readonly [K in keyof Results]: Results[K] extends Result<infer T, any> ? T : never;
+};
+
+type ErrorUnion<Results extends readonly Result<any, any>[]> =
+  Results[number] extends Result<any, infer E> ? E : never;
+
+type TaskSuccessTuple<Results extends readonly TaskResult<any, any>[]> = {
+  readonly [K in keyof Results]: Results[K] extends TaskResult<infer T, any> ? T : never;
+};
+
+type TaskErrorUnion<Results extends readonly TaskResult<any, any>[]> =
+  Results[number] extends TaskResult<any, infer E> ? E : never;
+
+export function all(
+  results: readonly [],
+): Result<readonly [], never>;
+export function all<const Results extends readonly Result<any, any>[]>(
+  results: readonly [...Results],
+): [ErrorUnion<Results>] extends [never]
+  ? Result<SuccessTuple<Results>, never>
+  : Result<SuccessTuple<Results>, ReturnType<typeof combinedError<ErrorUnion<Results>>>>;
+export function all<const Results extends readonly TaskResult<any, any>[]>(
+  results: readonly [...Results],
+): [TaskErrorUnion<Results>] extends [never]
+  ? TaskResult<TaskSuccessTuple<Results>, never>
+  : TaskResult<
+      TaskSuccessTuple<Results>,
+      ReturnType<typeof combinedError<TaskErrorUnion<Results>>>
+    >;
+export function all(
+  results: readonly Result<any, any>[] | readonly TaskResult<any, any>[],
+): Result<readonly unknown[], any> | TaskResult<readonly unknown[], any> {
+  if (results[0] instanceof TaskResult) {
+    return TaskResult.from(async (context) =>
+      Promise.all(
+        (results as readonly TaskResult<unknown, AppError>[]).map((item) =>
+          item.run(context),
+        ),
+      ).then((resolved) => all(resolved as readonly Result<unknown, AppError>[])),
+    );
+  }
+
+  const values: unknown[] = [];
+  const errors: AppError[] = [];
+
+  for (const result of results as readonly Result<unknown, AppError>[]) {
+    if (isOk(result)) {
+      values.push(result.value);
+    } else {
+      errors.push(result.error);
+    }
+  }
+
+  if (errors.length > 0) {
+    return err(combinedError(errors));
+  }
+
+  return ok(values);
+}
+
+export function attempt<T, E extends AppError = AppError>(
+  fn: () => T,
+  options: AttemptOptions<E> = {},
+): Result<T, E> {
+  const mapUnknown =
+    options.mapUnknown ?? ((thrown: unknown) => fromUnknown(thrown) as E);
+
+  try {
+    return ok(fn());
+  } catch (thrown) {
+    return err(mapUnknown(thrown)) as Result<T, E>;
+  }
+}
+
+function createAbortSignalRace(signal: AbortSignal): Promise<never> {
+  if (signal.aborted) {
+    return Promise.reject(signal.reason);
+  }
+
+  return new Promise<never>((_, reject) => {
+    signal.addEventListener(
+      'abort',
+      () => {
+        reject(signal.reason);
+      },
+      { once: true },
+    );
+  });
+}
+
+function isAbortSignalReason(signal: AbortSignal | undefined, thrown: unknown): boolean {
+  if (!signal) {
+    return false;
+  }
+
+  if (signal.aborted && thrown === signal.reason) {
+    return true;
+  }
+
+  if (thrown instanceof DOMException && thrown.name === 'AbortError') {
+    return true;
+  }
+
+  return thrown instanceof Error && thrown.name === 'AbortError';
+}
+
+function defaultAbortMapper(
+  reason: unknown,
+): ReturnType<typeof SystemErrors.Cancelled> {
+  return SystemErrors.Cancelled({
+    reason:
+      typeof reason === 'string'
+        ? reason
+        : reason instanceof Error
+          ? reason.message
+          : 'aborted',
+  });
+}
+
+export function attemptAsync<
+  T,
+  E extends AppError = AppError,
+  C extends AppError = ReturnType<typeof SystemErrors.Cancelled>,
+>(
+  fn: ((signal?: AbortSignal) => Promise<T>) | (() => Promise<T>),
+  options: AttemptAsyncOptions<E, C> = {},
+): TaskResult<T, E | C> {
+  const mapUnknown =
+    options.mapUnknown ?? ((thrown: unknown) => fromUnknown(thrown) as E);
+  const mapAbort =
+    (options.mapAbort as ((reason: unknown) => C) | undefined) ??
+    ((reason: unknown) => defaultAbortMapper(reason) as C);
+
+  return TaskResult.from(async ({ signal }) => {
+    try {
+      const promise = Promise.resolve().then(() =>
+        (fn as (signal?: AbortSignal) => Promise<T>)(signal),
+      );
+      const value = signal
+        ? await Promise.race([promise, createAbortSignalRace(signal)])
+        : await promise;
+
+      return ok(value);
+    } catch (thrown) {
+      if (isAbortSignalReason(signal, thrown)) {
+        return err(mapAbort(signal?.reason ?? thrown)) as Result<T, E | C>;
+      }
+
+      return err(mapUnknown(thrown)) as Result<T, E | C>;
+    }
+  });
+}
+
+export function match<T, E extends AppError, R>(
+  result: Result<T, E>,
+  handlers: MatchHandlers<T, E, R>,
+): R {
+  return result.match(handlers);
+}
+
+export function catchTag<
+  T,
+  E extends AppError,
+  Tag extends TagsOf<E>,
+  U = T,
+  E2 extends AppError = never,
+>(
+  result: Result<T, E>,
+  tag: Tag,
+  handler: (error: Extract<E, { _tag: Tag }>) => Result<U, E2>,
+): Result<T | U, Exclude<E, { _tag: Tag }> | E2> {
+  return result.catchTag(tag, handler);
+}
