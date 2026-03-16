@@ -78,7 +78,7 @@ describe('boundary', () => {
     // Bypass type system to simulate an unknown tag
     Object.defineProperty(fakeError, '_tag', { value: 'Unknown.Tag', writable: false });
 
-    const result = boundary(fakeError as any);
+    const result = boundary(fakeError as any) as any;
     expect(result._tag).toBe('System.BoundaryViolation');
     expect(result.data.expectedTags).toBeDefined();
     expect(Array.isArray(result.data.expectedTags)).toBe(true);

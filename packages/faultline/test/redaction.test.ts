@@ -90,8 +90,8 @@ describe('redaction', () => {
       ],
     };
     const result = applyRedactions(obj, ['context.*.meta.apiKey']);
-    expect(result.context[0].meta.apiKey).toBe('[REDACTED]');
-    expect(result.context[1].meta.apiKey).toBe('[REDACTED]');
+    expect(result.context[0]!.meta.apiKey).toBe('[REDACTED]');
+    expect(result.context[1]!.meta.apiKey).toBe('[REDACTED]');
   });
 
   test('missing path segments are silently skipped', () => {
