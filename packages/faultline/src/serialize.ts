@@ -6,9 +6,7 @@ import {
 } from './error';
 import type {
   AppError,
-  SerializedAppError,
   SerializedError,
-  SerializedCause,
 } from './error';
 import { SERIALIZED_ERROR_FORMAT_VERSION } from './error';
 import { isErr, isOk } from './result';
@@ -20,17 +18,19 @@ export type SerializableError = AppError | Error | unknown;
 
 export const SERIALIZED_RESULT_FORMAT_VERSION = 1 as const;
 
+export type SerializationFailedError = ReturnType<typeof SystemErrors.SerializationFailed>;
+
 export interface SerializedResultOk<T> {
-  readonly kind: 'result';
-  readonly version: typeof SERIALIZED_RESULT_FORMAT_VERSION;
-  readonly state: 'ok';
+  readonly _format: 'faultline-result';
+  readonly _version: typeof SERIALIZED_RESULT_FORMAT_VERSION;
+  readonly _type: 'ok';
   readonly value: T;
 }
 
 export interface SerializedResultErr {
-  readonly kind: 'result';
-  readonly version: typeof SERIALIZED_RESULT_FORMAT_VERSION;
-  readonly state: 'err';
+  readonly _format: 'faultline-result';
+  readonly _version: typeof SERIALIZED_RESULT_FORMAT_VERSION;
+  readonly _type: 'err';
   readonly error: SerializedError;
 }
 
@@ -64,21 +64,7 @@ export function serializeError(
 export function serializeResult<T, E extends AppError>(
   result: Result<T, E>,
 ): SerializedResult<T> {
-  if (isOk(result)) {
-    return {
-      kind: 'result',
-      version: SERIALIZED_RESULT_FORMAT_VERSION,
-      state: 'ok',
-      value: result.value,
-    };
-  }
-
-  return {
-    kind: 'result',
-    version: SERIALIZED_RESULT_FORMAT_VERSION,
-    state: 'err',
-    error: serializeError(result.error),
-  };
+  return result.toJSON() as SerializedResult<T>;
 }
 
 /**
@@ -87,7 +73,7 @@ export function serializeResult<T, E extends AppError>(
  */
 export function deserializeError(
   input: unknown,
-): Result<AppError, AppError> {
+): Result<AppError, SerializationFailedError> {
   if (
     input === null ||
     input === undefined ||
@@ -139,12 +125,12 @@ export function deserializeError(
 }
 
 /**
- * Deserializes a serialized result back into a Result.
- * Returns a Result — `Ok(Result)` on success, `Err(SerializationFailed)` on invalid input.
+ * Deserializes a serialized result back into a flat Result.
+ * Returns `Ok(T)` on success, `Err(AppError)` on failure or invalid input.
  */
 export function deserializeResult<T>(
   input: unknown,
-): Result<Result<T, AppError>, AppError> {
+): Result<T, AppError> {
   if (
     input === null ||
     input === undefined ||
@@ -158,25 +144,25 @@ export function deserializeResult<T>(
 
   const obj = input as Record<string, unknown>;
 
-  if (obj.kind !== 'result' || obj.version !== SERIALIZED_RESULT_FORMAT_VERSION) {
+  if (obj._format !== 'faultline-result' || obj._version !== SERIALIZED_RESULT_FORMAT_VERSION) {
     return err(SystemErrors.SerializationFailed({
       reason: 'Input does not match serialized Result format',
     }));
   }
 
-  if (obj.state === 'ok') {
-    return ok(ok(obj.value as T));
+  if (obj._type === 'ok') {
+    return ok(obj.value as T);
   }
 
-  if (obj.state === 'err' && obj.error && typeof obj.error === 'object') {
+  if (obj._type === 'err' && obj.error && typeof obj.error === 'object') {
     const errorResult = deserializeError(obj.error);
     if (isErr(errorResult)) {
       return err(errorResult.error);
     }
-    return ok(err(errorResult.value));
+    return err(errorResult.value);
   }
 
   return err(SystemErrors.SerializationFailed({
-    reason: `Unknown result type: ${String(obj.state)}`,
+    reason: `Unknown result type: ${String(obj._type)}`,
   }));
 }

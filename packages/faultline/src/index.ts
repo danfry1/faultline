@@ -80,6 +80,7 @@ export {
   serializeResult,
 } from './serialize';
 export type {
+  SerializationFailedError,
   SerializedResult,
   SerializedResultErr,
   SerializedResultOk,

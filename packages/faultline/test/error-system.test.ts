@@ -331,9 +331,9 @@ describe('boundaries and serialization', () => {
     const serialized = serializeResult(err(UserErrors.Unauthorized()));
 
     expect(serialized).toMatchObject({
-      kind: 'result',
-      version: SERIALIZED_RESULT_FORMAT_VERSION,
-      state: 'err',
+      _format: 'faultline-result',
+      _version: 1,
+      _type: 'err',
       error: {
         kind: 'app-error',
         _tag: 'User.Unauthorized',
@@ -343,7 +343,6 @@ describe('boundaries and serialization', () => {
 
   test('deserializes stable contracts', () => {
     const serializedError = serializeError(UserErrors.NotFound({ userId: '77' }));
-    const serializedResult = serializeResult(ok({ id: '8' }));
 
     const errorResult = deserializeError(serializedError);
     expect(isOk(errorResult)).toBe(true);
@@ -351,10 +350,11 @@ describe('boundaries and serialization', () => {
       expect(errorResult.value._tag).toBe('User.NotFound');
     }
 
-    const resultResult = deserializeResult(serializedResult);
-    expect(isOk(resultResult)).toBe(true);
-    if (isOk(resultResult)) {
-      expect(isOk(resultResult.value)).toBe(true);
+    const serializedResult = serializeResult(ok({ id: '8' }));
+    const result = deserializeResult(serializedResult);
+    expect(isOk(result)).toBe(true);
+    if (isOk(result)) {
+      expect(result.value).toEqual({ id: '8' });
     }
   });
 });
@@ -446,6 +446,8 @@ describe('Result toJSON', () => {
   test('JSON.stringify on ok result produces stable format', () => {
     const result = ok(42);
     const json = JSON.parse(JSON.stringify(result));
+    expect(json._format).toBe('faultline-result');
+    expect(json._version).toBe(1);
     expect(json._type).toBe('ok');
     expect(json.value).toBe(42);
   });
@@ -454,6 +456,8 @@ describe('Result toJSON', () => {
     const error = UserErrors.NotFound({ userId: '1' });
     const result = err(error);
     const json = JSON.parse(JSON.stringify(result));
+    expect(json._format).toBe('faultline-result');
+    expect(json._version).toBe(1);
     expect(json._type).toBe('err');
     expect(json.error._tag).toBe('User.NotFound');
   });

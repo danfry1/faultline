@@ -134,7 +134,7 @@ describe('deserializeResult', () => {
     const result = deserializeResult(serialized);
     expect(isOk(result)).toBe(true);
     if (isOk(result)) {
-      expect(isOk(result.value)).toBe(true);
+      expect(result.value).toBe(42);
     }
   });
 
@@ -142,7 +142,10 @@ describe('deserializeResult', () => {
     const original = err(TestErrors.NotFound({ id: '1' }));
     const serialized = serializeResult(original);
     const result = deserializeResult(serialized);
-    expect(isOk(result)).toBe(true);
+    expect(isErr(result)).toBe(true);
+    if (isErr(result)) {
+      expect(result.error._tag).toBe('Test.NotFound');
+    }
   });
 
   test('returns err for null input', () => {
@@ -156,8 +159,26 @@ describe('deserializeResult', () => {
   });
 
   test('returns err for wrong version', () => {
-    const result = deserializeResult({ kind: 'result', version: 999, state: 'ok', value: 1 } as any);
+    const result = deserializeResult({ _format: 'faultline-result', _version: 999, _type: 'ok', value: 1 } as any);
     expect(isErr(result)).toBe(true);
+  });
+});
+
+describe('Result toJSON format', () => {
+  test('ok toJSON produces versioned format', () => {
+    const json = JSON.parse(JSON.stringify(ok(42)));
+    expect(json._format).toBe('faultline-result');
+    expect(json._version).toBe(1);
+    expect(json._type).toBe('ok');
+    expect(json.value).toBe(42);
+  });
+
+  test('err toJSON produces versioned format', () => {
+    const json = JSON.parse(JSON.stringify(err(TestErrors.NotFound({ id: '1' }))));
+    expect(json._format).toBe('faultline-result');
+    expect(json._version).toBe(1);
+    expect(json._type).toBe('err');
+    expect(json.error._tag).toBe('Test.NotFound');
   });
 });
 
