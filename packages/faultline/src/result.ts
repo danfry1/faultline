@@ -284,9 +284,9 @@ export class TaskResult<T, E extends AppError = never> {
   }
 
   static fromPromise<T, E extends AppError>(
-    promise: Promise<Result<T, E>>,
+    factory: () => Promise<Result<T, E>>,
   ): TaskResult<T, E> {
-    return TaskResult.from(async () => promise);
+    return new TaskResult(async () => factory());
   }
 
   static ok<T>(value: T): TaskResult<T, never> {
@@ -491,20 +491,30 @@ export function attempt<T, E extends AppError = AppError>(
   }
 }
 
-function createAbortSignalRace(signal: AbortSignal): Promise<never> {
-  if (signal.aborted) {
-    return Promise.reject(signal.reason);
-  }
+function createAbortSignalRace(signal: AbortSignal): { promise: Promise<never>; cleanup: () => void } {
+  let listener: (() => void) | undefined;
 
-  return new Promise<never>((_, reject) => {
-    signal.addEventListener(
-      'abort',
-      () => {
-        reject(signal.reason);
-      },
-      { once: true },
-    );
+  const promise = new Promise<never>((_, reject) => {
+    if (signal.aborted) {
+      reject(signal.reason ?? new DOMException('The operation was aborted', 'AbortError'));
+      return;
+    }
+
+    listener = () => {
+      reject(signal.reason ?? new DOMException('The operation was aborted', 'AbortError'));
+    };
+
+    signal.addEventListener('abort', listener, { once: true });
   });
+
+  const cleanup = () => {
+    if (listener) {
+      signal.removeEventListener('abort', listener);
+      listener = undefined;
+    }
+  };
+
+  return { promise, cleanup };
 }
 
 function isAbortSignalReason(signal: AbortSignal | undefined, thrown: unknown): boolean {
@@ -551,14 +561,20 @@ export function attemptAsync<
     ((reason: unknown) => defaultAbortMapper(reason) as C);
 
   return TaskResult.from(async ({ signal }) => {
+    let cleanup: (() => void) | undefined;
     try {
       const promise = Promise.resolve().then(() =>
         (fn as (signal?: AbortSignal) => Promise<T>)(signal),
       );
-      const value = signal
-        ? await Promise.race([promise, createAbortSignalRace(signal)])
-        : await promise;
 
+      if (signal) {
+        const race = createAbortSignalRace(signal);
+        cleanup = race.cleanup;
+        const value = await Promise.race([promise, race.promise]);
+        return ok(value);
+      }
+
+      const value = await promise;
       return ok(value);
     } catch (thrown) {
       if (isAbortSignalReason(signal, thrown)) {
@@ -566,6 +582,8 @@ export function attemptAsync<
       }
 
       return err(mapUnknown(thrown)) as Result<T, E | C>;
+    } finally {
+      cleanup?.();
     }
   });
 }
