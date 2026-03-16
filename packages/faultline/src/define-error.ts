@@ -63,25 +63,45 @@ type FactoryFromDefinition<
 
 export type Infer<T extends { readonly [ErrorOutput]: unknown }> = T[ErrorOutputKey];
 
-/**
- * Constraint for error definitions in `defineErrors`. Uses `any` for `params` and `message`
- * data types because TypeScript cannot infer per-key generic types within Record constraints —
- * the `params` return type cannot automatically flow into the `message` callback parameter.
- *
- * **For type-safe `message` callbacks in `defineErrors`**, annotate the data parameter explicitly:
- * ```ts
- * message: (data: { email: string }) => `Invalid: ${data.email}`
- * ```
- *
- * Alternatively, use `defineError` (single) which correctly infers `message` data from `params`.
- */
-// oxlint-ignore -- typescript/no-explicit-any: Record constraint must use any for params/message; see comment above
+// oxlint-ignore -- typescript/no-explicit-any: Record constraint must use any for params/message; TypeScript cannot infer per-key generics
 type ErrorDefConstraint = {
   readonly code: string;
   readonly status?: number;
   readonly params?: (input: any) => any;
   readonly message?: string | ((data: any) => string);
 };
+
+/**
+ * Type-safe wrapper for error definitions within {@link defineErrors}.
+ *
+ * Wrapping a definition with `error()` creates an independent generic inference site,
+ * allowing TypeScript to infer the `message` callback parameter type from the `params`
+ * return type. Without it, `message` data is `any` due to a TypeScript limitation with
+ * per-key inference in Record generics.
+ *
+ * Zero cost at runtime — just returns the definition unchanged.
+ *
+ * @example
+ * ```ts
+ * const UserErrors = defineErrors('User', {
+ *   NotFound: error({
+ *     code: 'USER_NOT_FOUND',
+ *     params: (input: { userId: string }) => input,
+ *     message: ({ userId }) => `User ${userId} not found`, // userId is typed!
+ *   }),
+ *   Unauthorized: { code: 'USER_UNAUTHORIZED' }, // simple defs don't need wrapper
+ * });
+ * ```
+ */
+export function error<Code extends string>(
+  def: ErrorDefinitionWithoutParams<Code>,
+): ErrorDefinitionWithoutParams<Code>;
+export function error<Code extends string, Input, Data>(
+  def: ErrorDefinitionWithParams<Input, Data, Code>,
+): ErrorDefinitionWithParams<Input, Data, Code>;
+export function error(def: ErrorDefinition): ErrorDefinition {
+  return def;
+}
 
 export type ErrorGroup<
   Namespace extends string,
@@ -225,19 +245,17 @@ export function defineError(definition: {
 /**
  * Defines a group of related error factories under a shared namespace.
  *
- * Note: TypeScript cannot infer `message` callback data types from `params` in batch
- * definitions. Annotate the `message` data parameter explicitly for type safety.
- * For full inference, use {@link defineError} (single) instead.
+ * Wrap definitions with {@link error}() for full type inference on `message` callbacks.
  *
  * @example
  * ```ts
  * const UserErrors = defineErrors('User', {
- *   NotFound: {
+ *   NotFound: error({
  *     code: 'USER_NOT_FOUND',
  *     status: 404,
  *     params: (input: { userId: string }) => input,
- *     message: (data: { userId: string }) => `User ${data.userId} not found`,
- *   },
+ *     message: ({ userId }) => `User ${userId} not found`, // fully typed!
+ *   }),
  *   Unauthorized: { code: 'USER_UNAUTHORIZED', status: 401 },
  * });
  *
