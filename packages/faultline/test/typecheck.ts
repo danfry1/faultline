@@ -4,7 +4,9 @@ import {
   all,
   attemptAsync,
   defineBoundary,
+  defineError,
   defineErrors,
+  error,
   err,
   ok,
   type AppError,
@@ -20,16 +22,30 @@ type Equal<A, B> = (<T>() => T extends A ? 1 : 2) extends <
 
 type Expect<T extends true> = T;
 
+// === Three definition paths ===
+
 const UserErrors = defineErrors('User', {
+  // Path 1: Message-only — type annotation on message IS the data type
   NotFound: {
     code: 'USER_NOT_FOUND',
-    params: (input: { userId: string }) => input,
     message: (data: { userId: string }) => `User ${data.userId} not found`,
   },
+  // Path 3: Zero-arg
   Unauthorized: {
     code: 'USER_UNAUTHORIZED',
   },
 });
+
+// Path 1 type check: data is { userId: string }, not any or undefined
+type _messageOnlyData = Expect<Equal<Infer<typeof UserErrors.NotFound>['data'], { userId: string }>>;
+
+// defineError (single) also supports message-only:
+const SingleMsgError = defineError({
+  tag: 'Single.Msg',
+  code: 'SINGLE_MSG',
+  message: (data: { count: number }) => `Count: ${data.count}`,
+});
+type _singleMsgData = Expect<Equal<Infer<typeof SingleMsgError>['data'], { count: number }>>;
 
 const HttpErrors = defineErrors('Http', {
   NotFound: {
