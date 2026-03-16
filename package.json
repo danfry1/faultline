@@ -11,12 +11,17 @@
     "build": "bun --filter '*' build",
     "test": "bun --filter '*' test",
     "typecheck": "bun --filter '*' typecheck",
-    "lint": "oxlint .",
+    "lint": "oxlint . && eslint examples/",
+    "lint:eslint": "eslint examples/",
     "format": "oxlint --fix .",
     "cli": "bun run packages/faultline-cli/src/index.ts"
   },
   "devDependencies": {
+    "@typescript-eslint/eslint-plugin": "^8.57.0",
+    "@typescript-eslint/parser": "^8.57.0",
+    "eslint": "^10.0.3",
     "oxlint": "^0.16.0",
-    "typescript": "^5.9.3"
+    "typescript": "^5.9.3",
+    "typescript-eslint": "^8.57.0"
   }
 }

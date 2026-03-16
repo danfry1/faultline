@@ -10,15 +10,6 @@ const plugin = {
     'uncovered-catch': uncoveredCatch,
     'no-raw-throw': noRawThrow,
   },
-  configs: {
-    recommended: {
-      plugins: ['faultline'],
-      rules: {
-        'faultline/uncovered-catch': 'error',
-        'faultline/no-raw-throw': 'warn',
-      },
-    },
-  },
-};
+} as const;
 
-export = plugin;
+export default plugin;

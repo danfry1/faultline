@@ -9,6 +9,34 @@ const createRule = ESLintUtils.RuleCreator(
   (name) => `https://faultline.dev/rules/${name}`,
 );
 
+/**
+ * Walk an ESTree subtree using the source code's visitor keys,
+ * which avoids circular `parent` pointers.
+ */
+function walkNode(
+  sourceCode: { visitorKeys: Record<string, readonly string[]> },
+  node: TSESTree.Node,
+  callback: (n: TSESTree.Node) => void,
+): void {
+  callback(node);
+
+  const keys = sourceCode.visitorKeys[node.type];
+  if (!keys) return;
+
+  for (const key of keys) {
+    const child = (node as Record<string, unknown>)[key];
+    if (Array.isArray(child)) {
+      for (const item of child) {
+        if (item && typeof item === 'object' && 'type' in item) {
+          walkNode(sourceCode, item as TSESTree.Node, callback);
+        }
+      }
+    } else if (child && typeof child === 'object' && 'type' in child) {
+      walkNode(sourceCode, child as TSESTree.Node, callback);
+    }
+  }
+}
+
 export const uncoveredCatch = createRule({
   name: 'uncovered-catch',
   meta: {
@@ -37,56 +65,32 @@ export const uncoveredCatch = createRule({
         // Step 1: Collect all function calls in the try block and extract their error tags
         const tryErrorTags: Array<{ tag: string; functionName: string }> = [];
 
-        function visitTryBlock(astNode: TSESTree.Node): void {
-          if (astNode.type === 'CallExpression') {
-            const tsNode = services.esTreeNodeToTSNodeMap.get(astNode);
-            if (ts.isCallExpression(tsNode)) {
-              const signature = checker.getResolvedSignature(tsNode);
-              if (signature) {
-                const returnType = checker.getReturnTypeOfSignature(signature);
-                const tags = extractErrorTagsFromType(checker, returnType);
+        walkNode(context.sourceCode, node.block, (astNode) => {
+          if (astNode.type !== 'CallExpression') return;
 
-                if (tags.length > 0) {
-                  let functionName = '(unknown)';
-                  if (astNode.callee.type === 'Identifier') {
-                    functionName = astNode.callee.name;
-                  } else if (astNode.callee.type === 'MemberExpression' && astNode.callee.property.type === 'Identifier') {
-                    functionName = `${astNode.callee.object.type === 'Identifier' ? astNode.callee.object.name : '?'}.${astNode.callee.property.name}`;
-                  }
+          const tsNode = services.esTreeNodeToTSNodeMap.get(astNode);
+          if (!ts.isCallExpression(tsNode)) return;
 
-                  for (const tag of tags) {
-                    if (!tryErrorTags.some((t) => t.tag === tag)) {
-                      tryErrorTags.push({ tag, functionName });
-                    }
-                  }
-                }
-              }
-            }
+          const signature = checker.getResolvedSignature(tsNode);
+          if (!signature) return;
+
+          const returnType = checker.getReturnTypeOfSignature(signature);
+          const tags = extractErrorTagsFromType(checker, returnType);
+          if (tags.length === 0) return;
+
+          let functionName = '(unknown)';
+          if (astNode.callee.type === 'Identifier') {
+            functionName = astNode.callee.name;
+          } else if (astNode.callee.type === 'MemberExpression' && astNode.callee.property.type === 'Identifier') {
+            functionName = `${astNode.callee.object.type === 'Identifier' ? astNode.callee.object.name : '?'}.${astNode.callee.property.name}`;
           }
 
-          for (const child of context.sourceCode.getScope(astNode).childScopes) {
-            // Skip child scopes
-          }
-
-          // Visit children manually
-          for (const key of Object.keys(astNode) as (keyof typeof astNode)[]) {
-            const value = astNode[key];
-            if (value && typeof value === 'object' && 'type' in value) {
-              visitTryBlock(value as TSESTree.Node);
-            }
-            if (Array.isArray(value)) {
-              for (const item of value) {
-                if (item && typeof item === 'object' && 'type' in item) {
-                  visitTryBlock(item as TSESTree.Node);
-                }
-              }
+          for (const tag of tags) {
+            if (!tryErrorTags.some((t) => t.tag === tag)) {
+              tryErrorTags.push({ tag, functionName });
             }
           }
-        }
-
-        for (const stmt of node.block.body) {
-          visitTryBlock(stmt);
-        }
+        });
 
         if (tryErrorTags.length === 0) return;
 
@@ -103,7 +107,7 @@ export const uncoveredCatch = createRule({
         // Find narrowError() calls
         const narrowErrorCalls: TSESTree.CallExpression[] = [];
 
-        function findNarrowError(astNode: TSESTree.Node): void {
+        walkNode(context.sourceCode, catchBody, (astNode) => {
           if (
             astNode.type === 'CallExpression' &&
             astNode.callee.type === 'Identifier' &&
@@ -112,25 +116,7 @@ export const uncoveredCatch = createRule({
           ) {
             narrowErrorCalls.push(astNode);
           }
-
-          for (const key of Object.keys(astNode) as (keyof typeof astNode)[]) {
-            const value = astNode[key];
-            if (value && typeof value === 'object' && 'type' in value) {
-              findNarrowError(value as TSESTree.Node);
-            }
-            if (Array.isArray(value)) {
-              for (const item of value) {
-                if (item && typeof item === 'object' && 'type' in item) {
-                  findNarrowError(item as TSESTree.Node);
-                }
-              }
-            }
-          }
-        }
-
-        for (const stmt of catchBody.body) {
-          findNarrowError(stmt);
-        }
+        });
 
         if (narrowErrorCalls.length > 0) {
           // Step 3: Resolve covered tags from narrowError sources
@@ -142,18 +128,15 @@ export const uncoveredCatch = createRule({
             const sourcesType = checker.getTypeAtLocation(tsSourcesNode);
 
             if (sourcesType.isUnion()) {
-              // Array type — check each element
               for (const member of sourcesType.types) {
                 const tags = extractErrorTagsFromOutputType(checker, member);
                 for (const tag of tags) coveredTags.add(tag);
               }
             }
 
-            // Try direct extraction
             const directTags = extractErrorTagsFromOutputType(checker, sourcesType);
             for (const tag of directTags) coveredTags.add(tag);
 
-            // If it's a tuple/array, check element types
             if (ts.isArrayLiteralExpression(tsSourcesNode)) {
               for (const element of tsSourcesNode.elements) {
                 const elemType = checker.getTypeAtLocation(element);
@@ -185,7 +168,6 @@ export const uncoveredCatch = createRule({
             }
           }
         } else if (!hasTypedHandling) {
-          // No narrowError or typed handling at all
           const uniqueTags = [...new Set(tryErrorTags.map((t) => t.tag))];
           const functionNames = [...new Set(tryErrorTags.map((t) => t.functionName))];
 
