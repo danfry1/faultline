@@ -63,6 +63,26 @@ type FactoryFromDefinition<
 
 export type Infer<T extends { readonly [ErrorOutput]: unknown }> = T[ErrorOutputKey];
 
+/**
+ * Constraint for error definitions in `defineErrors`. Uses `any` for `params` and `message`
+ * data types because TypeScript cannot infer per-key generic types within Record constraints —
+ * the `params` return type cannot automatically flow into the `message` callback parameter.
+ *
+ * **For type-safe `message` callbacks in `defineErrors`**, annotate the data parameter explicitly:
+ * ```ts
+ * message: (data: { email: string }) => `Invalid: ${data.email}`
+ * ```
+ *
+ * Alternatively, use `defineError` (single) which correctly infers `message` data from `params`.
+ */
+// oxlint-ignore -- typescript/no-explicit-any: Record constraint must use any for params/message; see comment above
+type ErrorDefConstraint = {
+  readonly code: string;
+  readonly status?: number;
+  readonly params?: (input: any) => any;
+  readonly message?: string | ((data: any) => string);
+};
+
 export type ErrorGroup<
   Namespace extends string,
   Defs extends Record<string, ErrorDefinition>,
@@ -205,6 +225,10 @@ export function defineError(definition: {
 /**
  * Defines a group of related error factories under a shared namespace.
  *
+ * Note: TypeScript cannot infer `message` callback data types from `params` in batch
+ * definitions. Annotate the `message` data parameter explicitly for type safety.
+ * For full inference, use {@link defineError} (single) instead.
+ *
  * @example
  * ```ts
  * const UserErrors = defineErrors('User', {
@@ -212,7 +236,7 @@ export function defineError(definition: {
  *     code: 'USER_NOT_FOUND',
  *     status: 404,
  *     params: (input: { userId: string }) => input,
- *     message: ({ userId }) => `User ${userId} not found`,
+ *     message: (data: { userId: string }) => `User ${data.userId} not found`,
  *   },
  *   Unauthorized: { code: 'USER_UNAUTHORIZED', status: 401 },
  * });
@@ -220,22 +244,17 @@ export function defineError(definition: {
  * throw UserErrors.NotFound({ userId: '42' });
  * ```
  */
-// oxlint-ignore -- typescript/no-explicit-any: definition constraint must accept all param/data type combinations for inference
 export function defineErrors<
   Namespace extends string,
-  Defs extends Record<string, {
-    readonly code: string;
-    readonly status?: number;
-    readonly params?: (input: any) => any;
-    readonly message?: string | ((data: any) => string);
-  }>,
->(
+  Defs extends Record<string, ErrorDefConstraint>,
+>
+(
   namespace: Namespace,
   definitions: Defs,
 ): ErrorGroup<Namespace, { [K in keyof Defs]:
   Defs[K] extends { readonly params: (input: infer I) => infer D }
-    ? ErrorDefinitionWithParams<I, D, Defs[K]['code']>
-    : ErrorDefinitionWithoutParams<Defs[K]['code']>
+    ? ErrorDefinitionWithParams<I, D, Defs[K] extends { readonly code: infer C extends string } ? C : string>
+    : ErrorDefinitionWithoutParams<Defs[K] extends { readonly code: infer C extends string } ? C : string>
 }> {
   const group: Record<string, unknown> = {};
   const tags: string[] = [];
