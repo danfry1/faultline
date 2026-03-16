@@ -14,13 +14,13 @@ type Command = 'catalog' | 'graph' | 'lint' | 'doctor';
 function printUsage(): void {
   console.log(
     [
-      'Usage: errorsys <catalog|graph|lint|doctor> [path] [--json]',
+      'Usage: faultline <catalog|graph|lint|doctor> [path] [--json]',
       '',
       'Examples:',
-      '  errorsys catalog .',
-      '  errorsys graph ./apps/api',
-      '  errorsys lint ./src',
-      '  errorsys doctor . --json',
+      '  faultline catalog .',
+      '  faultline graph ./apps/api',
+      '  faultline lint ./src',
+      '  faultline doctor . --json',
     ].join('\n'),
   );
 }

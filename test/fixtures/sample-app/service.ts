@@ -4,7 +4,7 @@ import {
   err,
   ok,
   type Result,
-} from '../../../src/index';
+} from 'faultline';
 
 import { UserErrors } from './errors';
 

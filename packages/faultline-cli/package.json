@@ -1,0 +1,21 @@
+{
+  "name": "faultline-cli",
+  "version": "0.1.0",
+  "description": "CLI for Faultline — error catalog, lint, doctor, and flow graph.",
+  "type": "module",
+  "bin": {
+    "faultline": "./src/index.ts"
+  },
+  "scripts": {
+    "test": "bun test",
+    "typecheck": "bunx tsc --noEmit"
+  },
+  "dependencies": {
+    "faultline": "workspace:*"
+  },
+  "devDependencies": {
+    "@types/bun": "^1.3.10",
+    "@types/node": "^25.5.0",
+    "typescript": "^5.9.3"
+  }
+}

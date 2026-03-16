@@ -1,21 +1,22 @@
 import { describe, expect, test } from 'bun:test';
 import * as path from 'node:path';
 
+const cliPath = path.resolve(import.meta.dir, '../src/index.ts');
+
 const sampleFixturePath = path.resolve(
-  process.cwd(),
-  'test/fixtures/sample-app',
+  import.meta.dir,
+  '../../../test/fixtures/sample-app',
 );
 
 const brokenFixturePath = path.resolve(
-  process.cwd(),
-  'test/fixtures/broken-app',
+  import.meta.dir,
+  '../../../test/fixtures/broken-app',
 );
 
 describe('cli', () => {
   test('catalog prints discovered errors', () => {
     const result = Bun.spawnSync({
-      cmd: ['bun', 'run', 'src/cli.ts', 'catalog', sampleFixturePath],
-      cwd: process.cwd(),
+      cmd: ['bun', 'run', cliPath, 'catalog', sampleFixturePath],
       stdout: 'pipe',
       stderr: 'pipe',
     });
@@ -27,8 +28,7 @@ describe('cli', () => {
 
   test('lint exits non-zero when issues are present', () => {
     const result = Bun.spawnSync({
-      cmd: ['bun', 'run', 'src/cli.ts', 'lint', sampleFixturePath],
-      cwd: process.cwd(),
+      cmd: ['bun', 'run', cliPath, 'lint', sampleFixturePath],
       stdout: 'pipe',
       stderr: 'pipe',
     });
@@ -39,8 +39,7 @@ describe('cli', () => {
 
   test('doctor exits non-zero on structural errors', () => {
     const result = Bun.spawnSync({
-      cmd: ['bun', 'run', 'src/cli.ts', 'doctor', brokenFixturePath],
-      cwd: process.cwd(),
+      cmd: ['bun', 'run', cliPath, 'doctor', brokenFixturePath],
       stdout: 'pipe',
       stderr: 'pipe',
     });

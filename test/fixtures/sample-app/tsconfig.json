@@ -4,7 +4,10 @@
     "module": "ESNext",
     "moduleResolution": "Bundler",
     "strict": true,
-    "skipLibCheck": true
+    "skipLibCheck": true,
+    "paths": {
+      "faultline": ["../../../packages/faultline/src/index.ts"]
+    }
   },
   "include": ["./**/*.ts"]
 }

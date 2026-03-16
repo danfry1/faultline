@@ -6,7 +6,10 @@
     "strict": true,
     "noUncheckedIndexedAccess": true,
     "verbatimModuleSyntax": true,
-    "skipLibCheck": true
+    "skipLibCheck": true,
+    "paths": {
+      "faultline": ["../../../packages/faultline/src/index.ts"]
+    }
   },
   "include": ["./**/*.ts"]
 }

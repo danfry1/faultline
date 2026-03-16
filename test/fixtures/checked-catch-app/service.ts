@@ -1,4 +1,4 @@
-import { narrowError, type TypedPromise, type Infer } from '../../../src/index';
+import { narrowError, type TypedPromise, type Infer } from 'faultline';
 import { UserErrors, EmailErrors } from './errors';
 
 // Functions that declare their error types via TypedPromise

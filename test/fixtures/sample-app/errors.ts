@@ -1,4 +1,4 @@
-import { defineErrors } from '../../../src/index';
+import { defineErrors } from 'faultline';
 
 export const UserErrors = defineErrors('User', {
   NotFound: {

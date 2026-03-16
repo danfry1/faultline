@@ -6,21 +6,21 @@ import {
   renderCatalog,
   renderDiagnostics,
   renderGraph,
-} from '../src/index';
+} from '../src/tooling';
 
 const fixturePath = path.resolve(
-  process.cwd(),
-  'test/fixtures/sample-app',
+  import.meta.dir,
+  '../../../test/fixtures/sample-app',
 );
 
 const brokenFixturePath = path.resolve(
-  process.cwd(),
-  'test/fixtures/broken-app',
+  import.meta.dir,
+  '../../../test/fixtures/broken-app',
 );
 
 const checkedCatchFixturePath = path.resolve(
-  process.cwd(),
-  'test/fixtures/checked-catch-app',
+  import.meta.dir,
+  '../../../test/fixtures/checked-catch-app',
 );
 
 describe('tooling', () => {

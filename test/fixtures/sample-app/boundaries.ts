@@ -1,4 +1,4 @@
-import { defineBoundary } from '../../../src/index';
+import { defineBoundary } from 'faultline';
 
 import { HttpErrors, UserErrors } from './errors';
 
