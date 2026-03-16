@@ -9,8 +9,13 @@
     "noUncheckedIndexedAccess": true,
     "skipLibCheck": true,
     "lib": ["ES2022", "DOM"],
-    "types": ["node", "bun"],
-    "useDefineForClassFields": true
+    "types": ["bun"]
   },
-  "include": ["src/**/*.ts", "test/**/*.ts"]
+  "references": [
+    { "path": "packages/faultline" },
+    { "path": "packages/faultline-cli" },
+    { "path": "packages/eslint-plugin-faultline" },
+    { "path": "packages/faultline-vscode" }
+  ],
+  "include": []
 }

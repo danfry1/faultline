@@ -10,9 +10,7 @@
     "skipLibCheck": true,
     "lib": ["ES2022", "DOM"],
     "types": ["bun"],
-    "declaration": true,
-    "outDir": "dist",
-    "rootDir": "src"
+    "declaration": true
   },
   "include": ["src/**/*.ts", "test/**/*.ts"]
 }
