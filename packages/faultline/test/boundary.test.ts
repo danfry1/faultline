@@ -72,15 +72,20 @@ describe('boundary', () => {
     }
   });
 
-  test('BoundaryViolation includes expected tags', () => {
-    // Create an error with a tag the boundary doesn't handle
+  test('BoundaryViolation throws on unhandled tag', () => {
     const fakeError = DomainErrors.NotFound({ id: '1' });
-    // Bypass type system to simulate an unknown tag
     Object.defineProperty(fakeError, '_tag', { value: 'Unknown.Tag', writable: false });
 
-    const result = boundary(fakeError as any) as any;
-    expect(result._tag).toBe('System.BoundaryViolation');
-    expect(result.data.expectedTags).toBeDefined();
-    expect(Array.isArray(result.data.expectedTags)).toBe(true);
+    expect(() => boundary(fakeError as any)).toThrow();
+
+    try {
+      boundary(fakeError as any);
+    } catch (e) {
+      expect(isAppError(e)).toBe(true);
+      if (isAppError(e)) {
+        expect(e._tag).toBe('System.BoundaryViolation');
+        expect((e.data as any).expectedTags).toBeDefined();
+      }
+    }
   });
 });

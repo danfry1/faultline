@@ -119,7 +119,7 @@ export function defineBoundary(
     const handler = config.map[error._tag];
 
     if (!handler) {
-      return SystemErrors.BoundaryViolation({
+      throw SystemErrors.BoundaryViolation({
         boundary: config.name,
         fromTag: error._tag,
         expectedTags: Object.keys(config.map),
