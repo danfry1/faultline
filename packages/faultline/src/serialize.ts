@@ -14,8 +14,6 @@ import type { Result } from './result';
 import { ok, err } from './result';
 import { SystemErrors } from './system-errors';
 
-export type SerializableError = AppError | Error | unknown;
-
 export const SERIALIZED_RESULT_FORMAT_VERSION = 1 as const;
 
 export type SerializationFailedError = ReturnType<typeof SystemErrors.SerializationFailed>;
@@ -38,7 +36,7 @@ export type SerializedResult<T> = SerializedResultOk<T> | SerializedResultErr;
 
 /** Serializes any error (AppError, Error, or unknown) into a stable JSON-safe format. */
 export function serializeError(
-  error: SerializableError,
+  error: unknown,
 ): SerializedError {
   if (isAppError(error)) {
     return serializeAppError(error);
