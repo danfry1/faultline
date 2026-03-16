@@ -15,7 +15,7 @@ export type ErrorOutputKey = typeof ErrorOutput;
 export interface ErrorDefinitionWithoutParams<Code extends string = string> {
   readonly code: Code;
   readonly status?: number;
-  readonly message?: string | ((data: void) => string);
+  readonly message?: string | ((data: undefined) => string);
   readonly params?: undefined;
 }
 
@@ -35,7 +35,7 @@ export type ErrorDefinition =
   | ErrorDefinitionWithoutParams
   | ErrorDefinitionWithParams<any, any>;
 
-export type FactoryArgs<Input> = [Input] extends [void]
+export type FactoryArgs<Input> = [Input] extends [undefined]
   ? []
   : [input: Input];
 
@@ -58,7 +58,7 @@ type FactoryFromDefinition<
 > = Def extends ErrorDefinitionWithParams<infer Input, infer Data, infer Code>
   ? ErrorFactory<Tag, Code, Input, Data>
   : Def extends ErrorDefinitionWithoutParams<infer Code>
-    ? ErrorFactory<Tag, Code, void, void>
+    ? ErrorFactory<Tag, Code, undefined, undefined>
     : never;
 
 export type Infer<T extends { readonly [ErrorOutput]: unknown }> = T[ErrorOutputKey];
@@ -135,7 +135,7 @@ export function defineError<Tag extends string, Code extends string>(
   definition: {
     readonly tag: Tag;
   } & ErrorDefinitionWithoutParams<Code>,
-): ErrorFactory<Tag, Code, void, void>;
+): ErrorFactory<Tag, Code, undefined, undefined>;
 export function defineError<
   Tag extends string,
   Code extends string,

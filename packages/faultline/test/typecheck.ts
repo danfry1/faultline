@@ -48,7 +48,7 @@ type UserUnauthorized = Infer<typeof UserErrors.Unauthorized>;
 
 type _factoryTag = Expect<Equal<UserNotFound['_tag'], 'User.NotFound'>>;
 type _factoryData = Expect<Equal<UserNotFound['data'], { userId: string }>>;
-type _zeroArgData = Expect<Equal<UserUnauthorized['data'], void>>;
+type _zeroArgData = Expect<Equal<UserUnauthorized['data'], undefined>>;
 
 UserErrors.NotFound({ userId: '123' });
 UserErrors.Unauthorized();
