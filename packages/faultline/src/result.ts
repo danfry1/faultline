@@ -108,7 +108,10 @@ function matchErr<T, E extends AppError, R>(
     return handlers._(error);
   }
 
-  throw new Error(`Missing match handler for tag ${error._tag}`);
+  throw SystemErrors.Unexpected({
+    message: `No handler for error tag "${error._tag}" and no wildcard "_" handler provided`,
+    name: 'MatchExhaustion',
+  });
 }
 
 class OkImpl<T, E extends AppError = never> implements ResultOk<T, E> {

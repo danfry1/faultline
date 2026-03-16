@@ -405,3 +405,27 @@ describe('withCause edge cases', () => {
     expect(json.cause).toBeDefined();
   });
 });
+
+describe('match exhaustion', () => {
+  test('match without handler for tag throws SystemErrors.Unexpected', () => {
+    const error = UserErrors.NotFound({ userId: '1' });
+    const result = err(error);
+
+    expect(() => {
+      // Force a missing handler via cast to bypass type checking
+      (result as any).match({
+        ok: () => 'ok',
+        // deliberately missing 'User.NotFound' handler
+      });
+    }).toThrow();
+
+    try {
+      (result as any).match({ ok: () => 'ok' });
+    } catch (e) {
+      expect(isAppError(e)).toBe(true);
+      if (isAppError(e)) {
+        expect(e._tag).toBe('System.Unexpected');
+      }
+    }
+  });
+});
