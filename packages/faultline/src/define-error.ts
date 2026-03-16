@@ -9,6 +9,9 @@ import type {
   ErrorGroupRuntimeMeta,
 } from './error';
 
+export const ErrorOutput: unique symbol = Symbol.for('faultline.error-output');
+export type ErrorOutputKey = typeof ErrorOutput;
+
 export interface ErrorDefinitionWithoutParams<Code extends string = string> {
   readonly code: Code;
   readonly status?: number;
@@ -42,7 +45,7 @@ export interface ErrorFactory<
   Data,
 > {
   (...args: FactoryArgs<Input>): AppError<Tag, Code, Data>;
-  readonly _output: AppError<Tag, Code, Data>;
+  readonly [ErrorOutput]: AppError<Tag, Code, Data>;
 }
 
 type AnyErrorFactory = ErrorFactory<string, string, any, any>;
@@ -56,7 +59,7 @@ type FactoryFromDefinition<
     ? ErrorFactory<Tag, Code, void, void>
     : never;
 
-export type Infer<T extends { readonly _output: unknown }> = T['_output'];
+export type Infer<T extends { readonly [ErrorOutput]: unknown }> = T[ErrorOutputKey];
 
 export type ErrorGroup<
   Namespace extends string,
@@ -67,7 +70,7 @@ export type ErrorGroup<
     Defs[K]
   >;
 } & {
-  readonly _output: {
+  readonly [ErrorOutput]: {
     readonly [K in keyof Defs]: Infer<
       FactoryFromDefinition<`${Namespace}.${K & string}`, Defs[K]>
     >;

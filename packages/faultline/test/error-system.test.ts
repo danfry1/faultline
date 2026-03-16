@@ -481,3 +481,13 @@ describe('combinedError', () => {
     expect(two.message).toContain('2 failures');
   });
 });
+
+describe('ContextFrame extensibility', () => {
+  test('layer accepts custom string values', () => {
+    const error = UserErrors.NotFound({ userId: '1' }).withContext({
+      layer: 'gateway',
+      operation: 'route',
+    });
+    expect(error.context[0]?.layer).toBe('gateway');
+  });
+});

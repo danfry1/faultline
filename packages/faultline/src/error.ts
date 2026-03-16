@@ -2,7 +2,7 @@ import { getErrorConfig } from './config';
 import { applyRedactions } from './redaction';
 
 export interface ContextFrame {
-  readonly layer?: 'ui' | 'client' | 'service' | 'domain' | 'infra' | 'transport';
+  readonly layer?: 'ui' | 'client' | 'service' | 'domain' | 'infra' | 'transport' | (string & {});
   readonly operation: string;
   readonly component?: string;
   readonly requestId?: string;

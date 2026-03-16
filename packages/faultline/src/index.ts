@@ -2,7 +2,6 @@ export { configureErrors, getErrorConfig, resetErrorConfig } from './config';
 export type { ErrorSystemConfig } from './config';
 
 export {
-  createAppError,
   getBoundaryMeta,
   getFactoryMeta,
   getGroupMeta,
@@ -13,7 +12,6 @@ export {
 } from './error';
 export type {
   AppError,
-  AppErrorInit,
   BoundaryRuntimeMeta,
   ContextFrame,
   ErrorFactoryRuntimeMeta,
@@ -23,13 +21,14 @@ export type {
   SerializedCause,
 } from './error';
 
-export { defineError, defineErrors } from './define-error';
+export { defineError, defineErrors, ErrorOutput } from './define-error';
 export type {
   ErrorDefinition,
   ErrorDefinitionWithParams,
   ErrorDefinitionWithoutParams,
   ErrorFactory,
   ErrorGroup,
+  ErrorOutputKey,
   FactoryArgs,
   Infer,
 } from './define-error';

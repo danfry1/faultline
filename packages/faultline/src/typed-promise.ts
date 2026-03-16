@@ -2,7 +2,8 @@ import type { AppError } from './error';
 import { isAppError, ERROR_FACTORY_META, getGroupMeta, getFactoryMeta } from './error';
 import { fromUnknown } from './from-unknown';
 import { SystemErrors } from './system-errors';
-import type { Infer } from './define-error';
+import type { Infer, ErrorOutputKey } from './define-error';
+import { ErrorOutput } from './define-error';
 import type { UnexpectedError } from './system-errors';
 
 /**
@@ -50,17 +51,17 @@ export interface TypedPromise<T, E extends AppError = never>
  * Accepts error factories, error groups, or arrays of either.
  */
 type ErrorSource =
-  | { readonly _output: unknown }
-  | readonly { readonly _output: unknown }[];
+  | { readonly [ErrorOutput]: unknown }
+  | readonly { readonly [ErrorOutput]: unknown }[];
 
 /**
  * Extracts the AppError union from one or more error sources.
  */
 type InferErrors<T extends ErrorSource> = T extends readonly (infer Item)[]
-  ? Item extends { readonly _output: infer O }
+  ? Item extends { readonly [ErrorOutput]: infer O }
     ? O
     : never
-  : T extends { readonly _output: infer O }
+  : T extends { readonly [ErrorOutput]: infer O }
     ? O
     : never;
 
@@ -146,7 +147,7 @@ export function narrowError<S extends ErrorSource>(
  * }
  * ```
  */
-export function isErrorTag<F extends { readonly _output: AppError }>(
+export function isErrorTag<F extends { readonly [ErrorOutput]: AppError }>(
   value: unknown,
   factory: F,
 ): value is Infer<F>;
@@ -156,7 +157,7 @@ export function isErrorTag<Tag extends string>(
 ): value is AppError<Tag, string, unknown>;
 export function isErrorTag(
   value: unknown,
-  tagOrFactory: string | { readonly _output: unknown },
+  tagOrFactory: string | { readonly [ErrorOutput]: unknown },
 ): boolean {
   if (!isAppError(value)) return false;
 

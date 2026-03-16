@@ -1,4 +1,5 @@
-import type { Infer } from './define-error';
+import type { Infer, ErrorOutputKey } from './define-error';
+import { ErrorOutput } from './define-error';
 import { SystemErrors } from './system-errors';
 import {
   BOUNDARY_META,
@@ -7,7 +8,7 @@ import {
 } from './error';
 import type { AppError, BoundaryRuntimeMeta, ContextFrame } from './error';
 
-type OutputCarrier<E extends AppError = AppError> = { readonly _output: E };
+type OutputCarrier<E extends AppError = AppError> = { readonly [ErrorOutput]: E };
 
 type BoundaryMap<From extends AppError> = {
   readonly [K in From['_tag']]: (
