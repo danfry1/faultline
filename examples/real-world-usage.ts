@@ -20,7 +20,7 @@ import {
   type Result,
   type Infer,
   type AppError,
-} from '../src/index';
+} from 'faultline';
 
 // ============================================================================
 // STEP 1: Define your errors ONCE — used everywhere

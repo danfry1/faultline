@@ -14,7 +14,7 @@ import {
   fromUnknown,
   type TypedPromise,
   type Infer,
-} from '../src/index';
+} from 'faultline';
 
 // ============================================================================
 // STEP 1: Define your errors (replaces hand-rolled error classes)
