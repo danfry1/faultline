@@ -1,4 +1,4 @@
-export { configureErrors } from './config';
+export { configureErrors, getErrorConfig, resetErrorConfig } from './config';
 export type { ErrorSystemConfig } from './config';
 
 export {
