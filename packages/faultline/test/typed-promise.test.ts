@@ -72,15 +72,12 @@ describe('narrowError', () => {
     expect(error._tag).toBe('User.Unauthorized');
   });
 
-  test('preserves AppError even if tag does not match provided groups', () => {
+  test('wraps unrecognized AppError tag as System.Unexpected', () => {
     const thrown = PaymentErrors.Declined({ reason: 'expired' });
-    // Narrowing against UserErrors only — Payment.Declined is not in the type.
-    // At runtime the AppError is still preserved (not re-wrapped).
     const error = narrowError(thrown, [UserErrors]);
 
-    expect(isAppError(error)).toBe(true);
-    // Use isErrorTag for runtime check since the static type excludes Payment.Declined
-    expect(isErrorTag(error, 'Payment.Declined')).toBe(true);
+    expect(error._tag).toBe('System.Unexpected');
+    expect(isAppError(error.cause)).toBe(true);
   });
 });
 

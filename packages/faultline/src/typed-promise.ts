@@ -1,6 +1,7 @@
 import type { AppError } from './error';
-import { isAppError, ERROR_FACTORY_META } from './error';
+import { isAppError, ERROR_FACTORY_META, getGroupMeta, getFactoryMeta } from './error';
 import { fromUnknown } from './from-unknown';
+import { SystemErrors } from './system-errors';
 import type { Infer } from './define-error';
 import type { UnexpectedError } from './system-errors';
 
@@ -88,16 +89,41 @@ type InferErrors<T extends ErrorSource> = T extends readonly (infer Item)[]
  */
 export function narrowError<S extends ErrorSource>(
   thrown: unknown,
-  _sources: S,
+  sources: S,
 ): InferErrors<S> | UnexpectedError {
-  if (isAppError(thrown)) {
-    // Already an AppError — return it with narrowed type.
-    // At runtime every AppError satisfies this; the type-level narrowing
-    // is what gives the caller the specific union.
-    return thrown as InferErrors<S> | UnexpectedError;
+  // Collect all valid tags from the provided sources
+  const validTags = new Set<string>();
+  const sourceArray = Array.isArray(sources) ? sources : [sources];
+
+  for (const source of sourceArray) {
+    const groupMeta = getGroupMeta(source);
+    if (groupMeta) {
+      for (const tag of groupMeta.tags) {
+        validTags.add(tag);
+      }
+      continue;
+    }
+
+    const factoryMeta = getFactoryMeta(source);
+    if (factoryMeta) {
+      validTags.add(factoryMeta.tag);
+    }
   }
 
-  // Not an AppError — wrap as System.Unexpected
+  // If it's an AppError with a recognized tag, pass through
+  if (isAppError(thrown) && validTags.has(thrown._tag)) {
+    return thrown as InferErrors<S>;
+  }
+
+  // Unrecognized AppError — wrap as System.Unexpected preserving it as cause
+  if (isAppError(thrown)) {
+    return SystemErrors.Unexpected({
+      name: thrown.name,
+      message: thrown.message,
+    }).withCause(thrown) as unknown as UnexpectedError;
+  }
+
+  // Plain Error, primitives, etc. — delegate to fromUnknown
   return fromUnknown(thrown) as unknown as UnexpectedError;
 }
 
