@@ -52,7 +52,8 @@ describe('TaskResult.catchTag', () => {
   });
 
   test('ignores non-matching tag', async () => {
-    const task = TaskResult.err(TestErrors.Forbidden())
+    // Use a union error type so catchTag('Test.NotFound') is a valid tag to catch
+    const task = (TaskResult.err(TestErrors.Forbidden()) as TaskResult<string, ReturnType<typeof TestErrors.Forbidden> | ReturnType<typeof TestErrors.NotFound>>)
       .catchTag('Test.NotFound', () => ok('recovered'));
     const result = await task.run();
     expect(isErr(result)).toBe(true);
