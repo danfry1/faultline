@@ -44,10 +44,7 @@ export { fromUnknown } from './from-unknown';
 export type { FromUnknownOptions } from './from-unknown';
 
 export {
-  TaskResult,
   all,
-  attempt,
-  attemptAsync,
   catchTag,
   err,
   isErr,
@@ -57,14 +54,27 @@ export {
   ok,
 } from './result';
 export type {
-  AttemptAsyncOptions,
-  AttemptOptions,
   Result,
   ResultErr,
   ResultOk,
+} from './result';
+
+export {
+  TaskResult,
+} from './task-result';
+export type {
   TaskContext,
   TaskRunOptions,
-} from './result';
+} from './task-result';
+
+export {
+  attempt,
+  attemptAsync,
+} from './attempt';
+export type {
+  AttemptAsyncOptions,
+  AttemptOptions,
+} from './attempt';
 
 export { narrowError, isErrorTag, typedAsync } from './typed-promise';
 export type { TypedPromise } from './typed-promise';
