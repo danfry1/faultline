@@ -323,7 +323,7 @@ function invalidateCache(workspaceFolder: string): void {
 }
 
 function analyzeFile(document: vscode.TextDocument): void {
-  if (!vscode.workspace.getConfiguration('errorsys').get('enable', true)) {
+  if (!vscode.workspace.getConfiguration('faultline').get('enable', true)) {
     return;
   }
 
@@ -375,7 +375,7 @@ function analyzeFile(document: vscode.TextDocument): void {
             vscode.DiagnosticSeverity.Error,
           );
           diagnostic.code = 'uncovered-catch';
-          diagnostic.source = 'errorsys';
+          diagnostic.source = 'faultline';
           diagnostics.push(diagnostic);
         }
       }
@@ -397,7 +397,7 @@ function analyzeFile(document: vscode.TextDocument): void {
         vscode.DiagnosticSeverity.Warning,
       );
       diagnostic.code = 'unchecked-catch';
-      diagnostic.source = 'errorsys';
+      diagnostic.source = 'faultline';
       diagnostics.push(diagnostic);
     }
   }
@@ -406,7 +406,7 @@ function analyzeFile(document: vscode.TextDocument): void {
 }
 
 export function activate(context: vscode.ExtensionContext): void {
-  diagnosticCollection = vscode.languages.createDiagnosticCollection('errorsys');
+  diagnosticCollection = vscode.languages.createDiagnosticCollection('faultline');
   context.subscriptions.push(diagnosticCollection);
 
   // Analyze on file save
@@ -422,7 +422,7 @@ export function activate(context: vscode.ExtensionContext): void {
           invalidateCache(workspaceFolder.uri.fsPath);
         }
 
-        if (vscode.workspace.getConfiguration('errorsys').get('analyzeOnSave', true)) {
+        if (vscode.workspace.getConfiguration('faultline').get('analyzeOnSave', true)) {
           analyzeFile(document);
         }
       }
@@ -445,7 +445,7 @@ export function activate(context: vscode.ExtensionContext): void {
 
   // Manual analyze command
   context.subscriptions.push(
-    vscode.commands.registerCommand('errorsys.analyze', () => {
+    vscode.commands.registerCommand('faultline.analyze', () => {
       // Invalidate all caches
       programCache.clear();
 
@@ -484,7 +484,7 @@ export function activate(context: vscode.ExtensionContext): void {
           if (!info) return null;
 
           const markdown = new vscode.MarkdownString();
-          markdown.appendMarkdown(`**errorsys** — \`${info.functionName}()\` can throw:\n\n`);
+          markdown.appendMarkdown(`**faultline** — \`${info.functionName}()\` can throw:\n\n`);
           for (const tag of info.tags) {
             markdown.appendMarkdown(`- \`${tag}\`\n`);
           }
