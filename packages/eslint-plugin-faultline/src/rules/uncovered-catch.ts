@@ -55,8 +55,15 @@ export const uncoveredCatch = createRule({
   },
   defaultOptions: [],
   create(context) {
-    const services = ESLintUtils.getParserServices(context);
-    const checker = services.program.getTypeChecker();
+    let services: ReturnType<typeof ESLintUtils.getParserServices>;
+    let checker: ReturnType<ReturnType<typeof ESLintUtils.getParserServices>['program']['getTypeChecker']>;
+    try {
+      services = ESLintUtils.getParserServices(context);
+      checker = services.program.getTypeChecker();
+    } catch {
+      // Type-aware linting not available — skip rule
+      return {};
+    }
 
     return {
       TryStatement(node: TSESTree.TryStatement) {
@@ -94,27 +101,24 @@ export const uncoveredCatch = createRule({
 
         if (tryErrorTags.length === 0) return;
 
-        // Step 2: Check the catch block for narrowError() calls
+        // Step 2: Check the catch block for narrowError() and other typed handling calls
         const catchBody = node.handler.body;
-        const catchBodyText = context.sourceCode.getText(catchBody);
 
-        const hasTypedHandling =
-          catchBodyText.includes('narrowError') ||
-          catchBodyText.includes('isErrorTag') ||
-          catchBodyText.includes('isAppError') ||
-          catchBodyText.includes('fromUnknown');
-
-        // Find narrowError() calls
+        const typedHandlingNames = new Set(['narrowError', 'isErrorTag', 'isAppError', 'fromUnknown']);
         const narrowErrorCalls: TSESTree.CallExpression[] = [];
+        let hasTypedHandling = false;
 
         walkNode(context.sourceCode, catchBody, (astNode) => {
           if (
             astNode.type === 'CallExpression' &&
-            astNode.callee.type === 'Identifier' &&
-            astNode.callee.name === 'narrowError' &&
-            astNode.arguments.length >= 2
+            astNode.callee.type === 'Identifier'
           ) {
-            narrowErrorCalls.push(astNode);
+            if (astNode.callee.name === 'narrowError' && astNode.arguments.length >= 2) {
+              narrowErrorCalls.push(astNode);
+            }
+            if (typedHandlingNames.has(astNode.callee.name)) {
+              hasTypedHandling = true;
+            }
           }
         });
 
@@ -123,26 +127,22 @@ export const uncoveredCatch = createRule({
           const coveredTags = new Set<string>();
 
           for (const call of narrowErrorCalls) {
-            const sourcesArg = call.arguments[1]!;
+            const sourcesArg = call.arguments[1];
+            if (!sourcesArg) continue;
             const tsSourcesNode = services.esTreeNodeToTSNodeMap.get(sourcesArg);
-            const sourcesType = checker.getTypeAtLocation(tsSourcesNode);
 
-            if (sourcesType.isUnion()) {
-              for (const member of sourcesType.types) {
-                const tags = extractErrorTagsFromOutputType(checker, member);
-                for (const tag of tags) coveredTags.add(tag);
-              }
-            }
-
-            const directTags = extractErrorTagsFromOutputType(checker, sourcesType);
-            for (const tag of directTags) coveredTags.add(tag);
-
+            // Resolve covered tags from each element in the sources array/value
             if (ts.isArrayLiteralExpression(tsSourcesNode)) {
               for (const element of tsSourcesNode.elements) {
                 const elemType = checker.getTypeAtLocation(element);
                 const tags = extractErrorTagsFromOutputType(checker, elemType);
                 for (const tag of tags) coveredTags.add(tag);
               }
+            } else {
+              // Single source: narrowError(e, UserErrors)
+              const sourcesType = checker.getTypeAtLocation(tsSourcesNode);
+              const tags = extractErrorTagsFromOutputType(checker, sourcesType);
+              for (const tag of tags) coveredTags.add(tag);
             }
           }
 

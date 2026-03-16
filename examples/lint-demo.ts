@@ -86,7 +86,7 @@ async function unhandledCheckout(userId: string) {
     await chargeCard(user.id);
     return { status: 200, user };
   } catch (e) {
-    // ⚠️ unchecked-catch: no narrowError/isErrorTag/isAppError
+    // ⚠️ unchecked-catch: no typed error handling at all
     console.error('something failed', e);
     return { status: 500 };
   }
