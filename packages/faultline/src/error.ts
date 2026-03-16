@@ -73,10 +73,10 @@ export interface AppErrorInit<
   readonly stack?: string;
 }
 
-export const APP_ERROR_SYMBOL = Symbol.for('typescript-error-system.app-error');
-export const ERROR_FACTORY_META = Symbol.for('typescript-error-system.error-factory-meta');
-export const ERROR_GROUP_META = Symbol.for('typescript-error-system.error-group-meta');
-export const BOUNDARY_META = Symbol.for('typescript-error-system.boundary-meta');
+export const APP_ERROR_SYMBOL = Symbol.for('faultline.app-error');
+export const ERROR_FACTORY_META = Symbol.for('faultline.error-factory-meta');
+export const ERROR_GROUP_META = Symbol.for('faultline.error-group-meta');
+export const BOUNDARY_META = Symbol.for('faultline.boundary-meta');
 
 export interface ErrorFactoryRuntimeMeta {
   readonly tag: string;

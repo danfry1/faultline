@@ -1,5 +1,5 @@
 import type { AppError } from './error';
-import { isAppError } from './error';
+import { isAppError, ERROR_FACTORY_META } from './error';
 import { fromUnknown } from './from-unknown';
 import type { Infer } from './define-error';
 import type { UnexpectedError } from './system-errors';
@@ -140,7 +140,7 @@ export function isErrorTag(
 
   // It's a factory — extract the tag from factory metadata
   const meta = (tagOrFactory as Record<PropertyKey, unknown>)[
-    Symbol.for('typescript-error-system.error-factory-meta')
+    ERROR_FACTORY_META
   ] as { tag?: string } | undefined;
 
   if (meta?.tag) {
