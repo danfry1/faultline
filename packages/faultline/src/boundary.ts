@@ -1,4 +1,4 @@
-import type { Infer, ErrorOutputKey } from './define-error';
+import type { Infer } from './define-error';
 import { ErrorOutput } from './define-error';
 import { SystemErrors } from './system-errors';
 import {
@@ -16,6 +16,7 @@ type BoundaryMap<From extends AppError> = {
   ) => AppError;
 };
 
+// oxlint-ignore-next-line typescript/no-explicit-any -- `any` required for BoundaryMap constraint in conditional type
 type BoundaryOutput<Map extends BoundaryMap<any>> = ReturnType<Map[keyof Map]>;
 
 export interface BoundaryDefinition<
@@ -151,5 +152,6 @@ export function defineBoundary(
 
   attachBoundaryMeta(boundary, meta);
 
+  // Overload implementation: returning concrete closure from union overload implementation
   return boundary as Boundary<AppError, AppError>;
 }

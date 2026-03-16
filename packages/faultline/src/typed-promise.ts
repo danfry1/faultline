@@ -2,7 +2,7 @@ import type { AppError } from './error';
 import { isAppError, ERROR_FACTORY_META, getGroupMeta, getFactoryMeta } from './error';
 import { fromUnknown } from './from-unknown';
 import { SystemErrors } from './system-errors';
-import type { Infer, ErrorOutputKey } from './define-error';
+import type { Infer } from './define-error';
 import { ErrorOutput } from './define-error';
 import type { UnexpectedError } from './system-errors';
 
@@ -121,6 +121,7 @@ export function narrowError<S extends ErrorSource>(
   }
 
   if (isAppError(thrown) && validTags.has(thrown._tag)) {
+    // Type narrowing: runtime _tag check against validTags confirms thrown matches InferErrors<S>
     return thrown as InferErrors<S>;
   }
 
@@ -128,9 +129,11 @@ export function narrowError<S extends ErrorSource>(
     return SystemErrors.Unexpected({
       name: thrown.name,
       message: thrown.message,
+    // withCause returns AppError<Tag,Code,Data>, narrowing to UnexpectedError is safe since we created it via SystemErrors.Unexpected
     }).withCause(thrown) as unknown as UnexpectedError;
   }
 
+  // fromUnknown returns AppError, narrowing to UnexpectedError is safe since fromUnknown wraps via SystemErrors.Unexpected
   return fromUnknown(thrown) as unknown as UnexpectedError;
 }
 
@@ -172,6 +175,7 @@ export function isErrorTag(
   }
 
   // It's a factory — extract the tag from factory metadata
+  // Symbol property access: tagOrFactory confirmed as non-string object, cast to access symbol-keyed property
   const meta = (tagOrFactory as Record<PropertyKey, unknown>)[
     ERROR_FACTORY_META
   ] as { tag?: string } | undefined;
@@ -206,6 +210,7 @@ export function typedAsync<T, E extends AppError = never>() {
   return <Args extends unknown[]>(
     fn: (...args: Args) => Promise<T>,
   ): ((...args: Args) => TypedPromise<T, E>) => {
+    // Zero-cost type annotation: fn returns Promise<T>, TypedPromise<T,E> extends Promise<T> so cast is safe
     return fn as (...args: Args) => TypedPromise<T, E>;
   };
 }

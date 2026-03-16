@@ -64,6 +64,7 @@ export function serializeError(
 export function serializeResult<T, E extends AppError>(
   result: Result<T, E>,
 ): SerializedResult<T> {
+  // Return type narrowing: toJSON returns specific ok/err shapes, cast to SerializedResult<T> union
   return result.toJSON() as SerializedResult<T>;
 }
 
@@ -100,6 +101,7 @@ export function deserializeError(
   // Recursively deserialize cause if it's a serialized AppError
   let cause: unknown = input.cause;
   if (cause && typeof cause === 'object' && 'kind' in cause) {
+    // Type narrowing: cause confirmed as non-null object with 'kind' property, cast to SerializedError for kind check
     const causeObj = cause as SerializedError;
     if (causeObj.kind === 'app-error' && isSerializedAppError(causeObj)) {
       const causeResult = deserializeError(causeObj);
@@ -142,6 +144,7 @@ export function deserializeResult<T>(
     }));
   }
 
+  // Type narrowing: input confirmed as non-null, non-array object above; cast to access properties
   const obj = input as Record<string, unknown>;
 
   if (obj._format !== 'faultline-result' || obj._version !== SERIALIZED_RESULT_FORMAT_VERSION) {
@@ -151,6 +154,7 @@ export function deserializeResult<T>(
   }
 
   if (obj._type === 'ok') {
+    // Generic erasure: T is erased at runtime, trust the serialized format carries the correct value type
     return ok(obj.value as T);
   }
 

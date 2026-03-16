@@ -164,6 +164,7 @@ export function serializeAppError<
       : {}),
   };
 
+  // Return type narrowing: applyRedactions returns generic T, narrowing back to SerializedAppError preserves parameterization
   return applyRedactions(
     serialized,
     getErrorConfig().redactPaths,
@@ -203,10 +204,12 @@ class DefinedAppError<
     } else if (init.stack !== undefined) {
       this.stack = init.stack;
     } else if (
+      // V8 augmentation: captureStackTrace is non-standard, cast ErrorConstructor to include optional method
       typeof (Error as ErrorConstructor & {
         captureStackTrace?: (target: object, constructor?: Function) => void;
       }).captureStackTrace === 'function'
     ) {
+      // V8 augmentation: guaranteed by typeof check above
       (
         Error as ErrorConstructor & {
           captureStackTrace: (target: object, constructor?: Function) => void;
@@ -264,19 +267,22 @@ export function isAppError(value: unknown): value is AppError {
 
 /** Returns `true` if the value matches the serialized AppError format. */
 export function isSerializedAppError(value: unknown): value is SerializedAppError {
+  // Type narrowing: checking property existence on unknown value requires Record assertion
+  const obj = value as Record<PropertyKey, unknown>;
   return (
     value !== null &&
     typeof value === 'object' &&
-    (value as Record<PropertyKey, unknown>).kind === 'app-error' &&
-    (value as Record<PropertyKey, unknown>).version === SERIALIZED_ERROR_FORMAT_VERSION &&
-    typeof (value as Record<PropertyKey, unknown>)._tag === 'string' &&
-    typeof (value as Record<PropertyKey, unknown>).code === 'string' &&
-    typeof (value as Record<PropertyKey, unknown>).message === 'string'
+    obj.kind === 'app-error' &&
+    obj.version === SERIALIZED_ERROR_FORMAT_VERSION &&
+    typeof obj._tag === 'string' &&
+    typeof obj.code === 'string' &&
+    typeof obj.message === 'string'
   );
 }
 
 /** Returns `true` if the value matches the serialized cause format. */
 export function isSerializedCause(value: unknown): value is SerializedCause {
+  // Type narrowing: checking property existence on unknown value requires Record assertion
   return (
     value !== null &&
     typeof value === 'object' &&
@@ -290,6 +296,7 @@ export function getFactoryMeta(value: unknown): ErrorFactoryRuntimeMeta | undefi
     return undefined;
   }
 
+  // Symbol property access: unknown value confirmed as object/function above, cast to access symbol-keyed property
   return (value as Record<PropertyKey, unknown>)[
     ERROR_FACTORY_META
   ] as ErrorFactoryRuntimeMeta | undefined;
@@ -301,6 +308,7 @@ export function getGroupMeta(value: unknown): ErrorGroupRuntimeMeta | undefined 
     return undefined;
   }
 
+  // Symbol property access: unknown value confirmed as object/function above, cast to access symbol-keyed property
   return (value as Record<PropertyKey, unknown>)[
     ERROR_GROUP_META
   ] as ErrorGroupRuntimeMeta | undefined;
@@ -312,6 +320,7 @@ export function getBoundaryMeta(value: unknown): BoundaryRuntimeMeta | undefined
     return undefined;
   }
 
+  // Symbol property access: unknown value confirmed as object/function above, cast to access symbol-keyed property
   return (value as Record<PropertyKey, unknown>)[
     BOUNDARY_META
   ] as BoundaryRuntimeMeta | undefined;

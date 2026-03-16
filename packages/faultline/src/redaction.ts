@@ -1,3 +1,4 @@
+// Generic deep-clone: all `as T` casts are safe because each branch reconstructs the same structural type
 function cloneValue<T>(value: T, seen = new WeakSet<object>()): T {
   if (value === null || typeof value !== 'object') {
     return value;
@@ -43,6 +44,7 @@ function cloneValue<T>(value: T, seen = new WeakSet<object>()): T {
     return value;
   }
 
+  // Plain object: cast to Record for key enumeration since T is confirmed as non-null object
   const cloned: Record<string, unknown> = {};
   for (const key of Object.keys(value as Record<string, unknown>)) {
     cloned[key] = cloneValue((value as Record<string, unknown>)[key], seen);
@@ -55,17 +57,22 @@ function setRedactedAtPath(target: unknown, path: readonly string[]): void {
     return;
   }
 
+  // path.length > 0 guaranteed by early return above, so segment is always defined
   const [segment, ...rest] = path;
+  const key = segment as string;
 
-  if (segment === '*') {
+  // Type narrowing: target confirmed as non-null object above, cast to Record for property access
+  const obj = target as Record<string, unknown>;
+
+  if (key === '*') {
     // Wildcard: apply to all enumerable keys (or array indices)
     if (Array.isArray(target)) {
       for (const item of target) {
         setRedactedAtPath(item, rest);
       }
     } else {
-      for (const key of Object.keys(target as Record<string, unknown>)) {
-        setRedactedAtPath((target as Record<string, unknown>)[key], rest);
+      for (const k of Object.keys(obj)) {
+        setRedactedAtPath(obj[k], rest);
       }
     }
     return;
@@ -73,14 +80,14 @@ function setRedactedAtPath(target: unknown, path: readonly string[]): void {
 
   if (rest.length === 0) {
     // Terminal segment — redact
-    if (segment! in (target as Record<string, unknown>)) {
-      (target as Record<string, unknown>)[segment!] = '[REDACTED]';
+    if (key in obj) {
+      obj[key] = '[REDACTED]';
     }
     return;
   }
 
   // Recurse into the next level
-  const next = (target as Record<string, unknown>)[segment!];
+  const next = obj[key];
   if (next && typeof next === 'object') {
     setRedactedAtPath(next, rest);
   }

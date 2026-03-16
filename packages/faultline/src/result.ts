@@ -2,7 +2,6 @@ import type { AppError, ContextFrame, SerializedAppError } from './error';
 import { combinedError } from './system-errors';
 import { SystemErrors } from './system-errors';
 import type { UnexpectedError } from './system-errors';
-import { fromUnknown } from './from-unknown';
 
 type TagsOf<E extends AppError> = E['_tag'];
 
@@ -101,6 +100,7 @@ function matchErr<T, E extends AppError, R>(
   error: E,
   handlers: MatchHandlers<T, E, R>,
 ): R {
+  // Generic variance: MatchHandlers union must be narrowed to access tag-keyed handler
   const specificHandler = (handlers as Partial<Record<E['_tag'], (error: E) => R>>)[
     error._tag as E['_tag']
   ];
@@ -192,6 +192,7 @@ class ErrImpl<T, E extends AppError> implements ResultErr<T, E> {
   }
 
   mapErr<E2 extends AppError>(fn: (error: E) => E2): Result<T, E2> {
+    // Generic variance: err() returns ResultErr<never, E2>, widen to Result<T, E2>
     return err(fn(this.error)) as Result<T, E2>;
   }
 
@@ -206,9 +207,11 @@ class ErrImpl<T, E extends AppError> implements ResultErr<T, E> {
     handler: (error: Extract<E, { _tag: Tag }>) => Result<U, E2>,
   ): Result<T | U, Exclude<E, { _tag: Tag }> | E2> {
     if (this.error._tag === tag) {
+      // Discriminated union narrowing: runtime _tag check guarantees Extract<E, {_tag: Tag}>
       return handler(this.error as Extract<E, { _tag: Tag }>);
     }
 
+    // Covariance: ErrImpl<T,E> → Result<T|U, Exclude<E,{_tag:Tag}>|E2> — error doesn't match tag, so Exclude is safe
     return this as unknown as Result<T | U, Exclude<E, { _tag: Tag }> | E2>;
   }
 
@@ -226,6 +229,7 @@ class ErrImpl<T, E extends AppError> implements ResultErr<T, E> {
   }
 
   withContext(frame: ContextFrame): Result<T, E> {
+    // withContext returns AppError<Tag,Code,Data>, narrowing back to E is safe since shape is preserved
     return err(this.error.withContext(frame) as E) as Result<T, E>;
   }
 
@@ -339,7 +343,8 @@ export class TaskResult<T, E extends AppError = never> {
       this.executor(context).then(async (result) =>
         isOk(result)
           ? ok(await fn(result.value))
-          : (result as unknown as Result<U, E>),
+          : // Covariance: ErrImpl<T,E> → Result<U,E> — error path, T is unused
+            (result as unknown as Result<U, E>),
       ),
     );
   }
@@ -349,6 +354,7 @@ export class TaskResult<T, E extends AppError = never> {
   ): TaskResult<T, E2> {
     return TaskResult.from(async (context) =>
       this.executor(context).then(async (result) =>
+        // Generic variance: err() returns ResultErr<never, E2>, widen to Result<T, E2>
         isErr(result) ? (err(await fn(result.error)) as Result<T, E2>) : ok(result.value),
       ),
     );
@@ -361,7 +367,8 @@ export class TaskResult<T, E extends AppError = never> {
       this.executor(context).then(async (result) =>
         isOk(result)
           ? await fn(result.value)
-          : (result as unknown as Result<U, E | E2>),
+          : // Covariance: ErrImpl<T,E> → Result<U, E|E2> — error path, T is unused
+            (result as unknown as Result<U, E | E2>),
       ),
     );
   }
@@ -374,6 +381,7 @@ export class TaskResult<T, E extends AppError = never> {
     return TaskResult.from(async (context) =>
       this.executor(context).then(async (result) => {
         if (isErr(result)) {
+          // Covariance: ErrImpl<T,E> → Result<U, E|E2> — error path, T is unused
           return result as unknown as Result<U, E | E2>;
         }
 
@@ -395,10 +403,12 @@ export class TaskResult<T, E extends AppError = never> {
     return TaskResult.from(async (context) =>
       this.executor(context).then(async (result) => {
         if (!isErr(result) || result.error._tag !== tag) {
+          // Covariance: error doesn't match tag, so Exclude is safe; widen T to T|U
           return result as unknown as Result<T | U, Exclude<E, { _tag: Tag }> | E2>;
         }
 
         return resolveTaskLike(
+          // Discriminated union narrowing: runtime _tag check guarantees Extract<E, {_tag: Tag}>
           handler(result.error as Extract<E, { _tag: Tag }>),
           context,
         );
@@ -411,6 +421,7 @@ export class TaskResult<T, E extends AppError = never> {
     options: TaskRunOptions = {},
   ): Promise<R> {
     const result = await this.run(options);
+    // Overload implementation: handlers is MatchHandlers union, cast to call concrete .match()
     return result.match(handlers as ExhaustiveMatchHandlers<T, E, R | Promise<R>>);
   }
 
@@ -453,17 +464,21 @@ export class TaskResult<T, E extends AppError = never> {
   }
 }
 
+// oxlint-ignore -- typescript/no-explicit-any: `any` required in conditional type inference positions; `unknown` breaks `infer`
 type SuccessTuple<Results extends readonly Result<any, any>[]> = {
   readonly [K in keyof Results]: Results[K] extends Result<infer T, any> ? T : never;
 };
 
+// oxlint-ignore -- typescript/no-explicit-any: `any` required in conditional type inference positions; `unknown` breaks `infer`
 type ErrorUnion<Results extends readonly Result<any, any>[]> =
   Results[number] extends Result<any, infer E> ? E : never;
 
+// oxlint-ignore -- typescript/no-explicit-any: `any` required in conditional type inference positions; `unknown` breaks `infer`
 type TaskSuccessTuple<Results extends readonly TaskResult<any, any>[]> = {
   readonly [K in keyof Results]: Results[K] extends TaskResult<infer T, any> ? T : never;
 };
 
+// oxlint-ignore -- typescript/no-explicit-any: `any` required in conditional type inference positions; `unknown` breaks `infer`
 type TaskErrorUnion<Results extends readonly TaskResult<any, any>[]> =
   Results[number] extends TaskResult<any, infer E> ? E : never;
 
@@ -475,11 +490,13 @@ type TaskErrorUnion<Results extends readonly TaskResult<any, any>[]> =
 export function all(
   results: readonly [],
 ): Result<readonly [], never>;
+// oxlint-ignore -- typescript/no-explicit-any: `any` required in overload constraint for generic inference
 export function all<const Results extends readonly Result<any, any>[]>(
   results: readonly [...Results],
 ): [ErrorUnion<Results>] extends [never]
   ? Result<SuccessTuple<Results>, never>
   : Result<SuccessTuple<Results>, ReturnType<typeof combinedError<ErrorUnion<Results>>>>;
+// oxlint-ignore -- typescript/no-explicit-any: `any` required in overload constraint for generic inference
 export function all<const Results extends readonly TaskResult<any, any>[]>(
   results: readonly [...Results],
 ): [TaskErrorUnion<Results>] extends [never]
@@ -488,6 +505,7 @@ export function all<const Results extends readonly TaskResult<any, any>[]>(
       TaskSuccessTuple<Results>,
       ReturnType<typeof combinedError<TaskErrorUnion<Results>>>
     >;
+// oxlint-ignore -- typescript/no-explicit-any: overload implementation must accept all overload signatures
 export function all(
   results: readonly Result<any, any>[] | readonly TaskResult<any, any>[],
 ): Result<readonly unknown[], any> | TaskResult<readonly unknown[], any> {
@@ -524,7 +542,7 @@ function wrapAsUnexpected(thrown: unknown): UnexpectedError {
   const message = thrown instanceof Error ? thrown.message : typeof thrown === 'string' ? thrown : 'Unexpected error';
   const name = thrown instanceof Error ? thrown.name : undefined;
   const error = SystemErrors.Unexpected({ name, message });
-  // oxlint-ignore-next-line -- withCause returns AppError<Tag,Code,Data>, narrowing to UnexpectedError is safe since we created it via SystemErrors.Unexpected
+  // withCause returns AppError<Tag,Code,Data>, narrowing to UnexpectedError is safe since we created it via SystemErrors.Unexpected
   return (thrown !== null && thrown !== undefined ? error.withCause(thrown) : error) as UnexpectedError;
 }
 
@@ -640,13 +658,16 @@ export function attemptAsync<
 ): TaskResult<T, E | C | UnexpectedError> {
   const mapUnknown = options?.mapUnknown ?? wrapAsUnexpected;
   const mapAbort =
+    // Generic variance: mapAbort option type is wider than C, cast to align with overload return type
     (options?.mapAbort as ((reason: unknown) => C) | undefined) ??
+    // Generic variance: defaultAbortMapper returns SystemErrors.Cancelled, cast to C which defaults to that type
     ((reason: unknown) => defaultAbortMapper(reason) as C);
 
   return TaskResult.from(async ({ signal }): Promise<Result<T, E | C | UnexpectedError>> => {
     let cleanup: (() => void) | undefined;
     try {
       const promise = Promise.resolve().then(() =>
+        // Overload implementation: fn accepts optional signal, cast union to concrete signature
         (fn as (signal?: AbortSignal) => Promise<T>)(signal),
       );
 
@@ -684,6 +705,7 @@ export function match<T, E extends AppError, R>(
   result: Result<T, E>,
   handlers: MatchHandlers<T, E, R>,
 ): R {
+  // Overload implementation: handlers is MatchHandlers union, cast to call concrete .match()
   return result.match(handlers as ExhaustiveMatchHandlers<T, E, R>);
 }
 

@@ -69,5 +69,6 @@ const CombinedFactory = defineError({
 export function combinedError<E extends AppError>(
   errors: readonly { readonly index: number; readonly error: E }[],
 ): CombinedAppError<E> {
+  // Return type narrowing: CombinedFactory produces AppError but we know it's CombinedAppError<E>
   return CombinedFactory({ errors }) as CombinedAppError<E>;
 }

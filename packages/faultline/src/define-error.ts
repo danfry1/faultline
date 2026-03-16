@@ -30,6 +30,7 @@ export interface ErrorDefinitionWithParams<
   readonly message?: string | ((data: Data) => string);
 }
 
+// oxlint-ignore -- typescript/no-explicit-any: union member must accept all possible Input/Data type combinations
 export type ErrorDefinition =
   | ErrorDefinitionWithoutParams
   | ErrorDefinitionWithParams<any, any>;
@@ -48,6 +49,7 @@ export interface ErrorFactory<
   readonly [ErrorOutput]: AppError<Tag, Code, Data>;
 }
 
+// oxlint-ignore-next-line typescript/no-explicit-any -- widest ErrorFactory type for overload implementation return
 type AnyErrorFactory = ErrorFactory<string, string, any, any>;
 
 type FactoryFromDefinition<
@@ -144,6 +146,7 @@ export function defineError<
     readonly tag: Tag;
   } & ErrorDefinitionWithParams<Input, Data, Code>,
 ): ErrorFactory<Tag, Code, Input, Data>;
+// oxlint-ignore -- typescript/no-explicit-any: overload implementation must accept all param/data type combinations
 export function defineError(definition: {
   readonly tag: string;
   readonly code: string;
@@ -195,6 +198,7 @@ export function defineError(definition: {
     ...(definition.status !== undefined ? { status: definition.status } : {}),
   });
 
+  // Overload implementation: factory closure matches AnyErrorFactory shape, cast satisfies return type
   return factory as AnyErrorFactory;
 }
 
@@ -216,6 +220,7 @@ export function defineError(definition: {
  * throw UserErrors.NotFound({ userId: '42' });
  * ```
  */
+// oxlint-ignore -- typescript/no-explicit-any: definition constraint must accept all param/data type combinations for inference
 export function defineErrors<
   Namespace extends string,
   Defs extends Record<string, {
@@ -239,6 +244,7 @@ export function defineErrors<
     const tag = `${namespace}.${key}`;
     tags.push(tag);
 
+    // Overload dispatch: definition from Record<string, ...> must be cast to ErrorDefinition union for defineError overloads
     const factory = defineError({
       ...(definition as ErrorDefinition),
       tag,
@@ -252,5 +258,6 @@ export function defineErrors<
     tags,
   });
 
+  // Return type narrowing: dynamically built group object matches ErrorGroup shape, cast to parameterized return type
   return group as ReturnType<typeof defineErrors<Namespace, Defs>>;
 }
