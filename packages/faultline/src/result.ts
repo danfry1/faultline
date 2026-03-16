@@ -1,6 +1,7 @@
 import type { AppError, ContextFrame, SerializedAppError } from './error';
 import { combinedError } from './system-errors';
 import { SystemErrors } from './system-errors';
+import type { UnexpectedError } from './system-errors';
 import { fromUnknown } from './from-unknown';
 
 type TagsOf<E extends AppError> = E['_tag'];
@@ -514,6 +515,14 @@ export function all(
   return ok(values);
 }
 
+function wrapAsUnexpected(thrown: unknown): UnexpectedError {
+  const message = thrown instanceof Error ? thrown.message : typeof thrown === 'string' ? thrown : 'Unexpected error';
+  const name = thrown instanceof Error ? thrown.name : undefined;
+  const error = SystemErrors.Unexpected({ name, message });
+  // oxlint-ignore-next-line -- withCause returns AppError<Tag,Code,Data>, narrowing to UnexpectedError is safe since we created it via SystemErrors.Unexpected
+  return (thrown !== null && thrown !== undefined ? error.withCause(thrown) : error) as UnexpectedError;
+}
+
 /**
  * Runs a synchronous function and captures thrown exceptions as typed errors.
  *
@@ -522,17 +531,18 @@ export function all(
  * const result = attempt(() => JSON.parse(input));
  * ```
  */
-export function attempt<T, E extends AppError = AppError>(
+export function attempt<T>(fn: () => T): Result<T, UnexpectedError>;
+export function attempt<T, E extends AppError>(fn: () => T, options: AttemptOptions<E>): Result<T, E>;
+export function attempt<T, E extends AppError>(
   fn: () => T,
-  options: AttemptOptions<E> = {},
-): Result<T, E> {
-  const mapUnknown =
-    options.mapUnknown ?? ((thrown: unknown) => fromUnknown(thrown) as E);
+  options?: AttemptOptions<E>,
+): Result<T, E | UnexpectedError> {
+  const mapUnknown = options?.mapUnknown ?? wrapAsUnexpected;
 
   try {
     return ok(fn());
   } catch (thrown) {
-    return err(mapUnknown(thrown)) as Result<T, E>;
+    return err(mapUnknown(thrown));
   }
 }
 
@@ -604,21 +614,31 @@ function defaultAbortMapper(
  * const result = await task.run();
  * ```
  */
+export function attemptAsync<T>(
+  fn: ((signal?: AbortSignal) => Promise<T>) | (() => Promise<T>),
+): TaskResult<T, UnexpectedError | ReturnType<typeof SystemErrors.Cancelled>>;
 export function attemptAsync<
   T,
-  E extends AppError = AppError,
+  E extends AppError,
   C extends AppError = ReturnType<typeof SystemErrors.Cancelled>,
 >(
   fn: ((signal?: AbortSignal) => Promise<T>) | (() => Promise<T>),
-  options: AttemptAsyncOptions<E, C> = {},
-): TaskResult<T, E | C> {
-  const mapUnknown =
-    options.mapUnknown ?? ((thrown: unknown) => fromUnknown(thrown) as E);
+  options: AttemptAsyncOptions<E, C>,
+): TaskResult<T, E | C>;
+export function attemptAsync<
+  T,
+  E extends AppError = UnexpectedError,
+  C extends AppError = ReturnType<typeof SystemErrors.Cancelled>,
+>(
+  fn: ((signal?: AbortSignal) => Promise<T>) | (() => Promise<T>),
+  options?: AttemptAsyncOptions<E, C>,
+): TaskResult<T, E | C | UnexpectedError> {
+  const mapUnknown = options?.mapUnknown ?? wrapAsUnexpected;
   const mapAbort =
-    (options.mapAbort as ((reason: unknown) => C) | undefined) ??
+    (options?.mapAbort as ((reason: unknown) => C) | undefined) ??
     ((reason: unknown) => defaultAbortMapper(reason) as C);
 
-  return TaskResult.from(async ({ signal }) => {
+  return TaskResult.from(async ({ signal }): Promise<Result<T, E | C | UnexpectedError>> => {
     let cleanup: (() => void) | undefined;
     try {
       const promise = Promise.resolve().then(() =>
@@ -636,10 +656,10 @@ export function attemptAsync<
       return ok(value);
     } catch (thrown) {
       if (isAbortSignalReason(signal, thrown)) {
-        return err(mapAbort(signal?.reason ?? thrown)) as Result<T, E | C>;
+        return err(mapAbort(signal?.reason ?? thrown));
       }
 
-      return err(mapUnknown(thrown)) as Result<T, E | C>;
+      return err(mapUnknown(thrown));
     } finally {
       cleanup?.();
     }

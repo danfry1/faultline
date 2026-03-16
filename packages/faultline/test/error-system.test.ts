@@ -491,3 +491,27 @@ describe('ContextFrame extensibility', () => {
     expect(error.context[0]?.layer).toBe('gateway');
   });
 });
+
+describe('attempt overloads', () => {
+  test('attempt without options always wraps as UnexpectedError', () => {
+    const result = attempt(() => {
+      throw UserErrors.NotFound({ userId: '1' });
+    });
+    expect(isErr(result)).toBe(true);
+    if (isErr(result)) {
+      expect(result.error._tag).toBe('System.Unexpected');
+      expect(isAppError(result.error.cause)).toBe(true);
+    }
+  });
+
+  test('attempt with mapUnknown preserves user mapping', () => {
+    const result = attempt(
+      () => { throw new Error('parse failed'); },
+      { mapUnknown: (thrown) => fromUnknown(thrown) },
+    );
+    expect(isErr(result)).toBe(true);
+    if (isErr(result)) {
+      expect(result.error._tag).toBe('System.Unexpected');
+    }
+  });
+});
