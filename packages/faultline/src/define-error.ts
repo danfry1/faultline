@@ -302,7 +302,7 @@ export function defineError(definition: {
  */
 export function defineErrors<
   Namespace extends string,
-  Defs extends Record<string, ErrorDefConstraint>,
+  const Defs extends Record<string, ErrorDefConstraint>,
 >
 (
   namespace: Namespace,

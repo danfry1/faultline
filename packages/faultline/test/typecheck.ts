@@ -57,6 +57,22 @@ type _factoryTag = Expect<Equal<UserNotFound['_tag'], 'User.NotFound'>>;
 type _factoryData = Expect<Equal<UserNotFound['data'], { userId: string }>>;
 type _zeroArgData = Expect<Equal<UserUnauthorized['data'], undefined>>;
 
+// Auto-generated code: namespace + key → SCREAMING_SNAKE_CASE literal
+type _autoCode = Expect<Equal<UserNotFound['code'], 'USER_NOT_FOUND'>>;
+type _autoCodeZeroArg = Expect<Equal<UserUnauthorized['code'], 'USER_UNAUTHORIZED'>>;
+
+// Explicit code override preserves the literal
+const OverrideErrors = defineErrors('User', {
+  Custom: { code: 'E404', message: (data: { id: string }) => `Not found: ${data.id}` },
+});
+type _overrideCode = Expect<Equal<Infer<typeof OverrideErrors.Custom>['code'], 'E404'>>;
+
+// defineError (single) auto-generates from tag
+type _singleAutoCode = Expect<Equal<Infer<typeof SingleMsgError>['code'], 'SINGLE_MSG'>>;
+
+// @ts-expect-error auto-generated code should NOT be 'WRONG'
+const _badCode: UserNotFound['code'] = 'WRONG';
+
 UserErrors.NotFound({ userId: '123' });
 UserErrors.Unauthorized();
 
