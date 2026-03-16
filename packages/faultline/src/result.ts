@@ -569,6 +569,14 @@ export function attemptAsync<
 
 export function match<T, E extends AppError, R>(
   result: Result<T, E>,
+  handlers: ExhaustiveMatchHandlers<T, E, R>,
+): R;
+export function match<T, E extends AppError, R>(
+  result: Result<T, E>,
+  handlers: PartialMatchHandlers<T, E, R>,
+): R;
+export function match<T, E extends AppError, R>(
+  result: Result<T, E>,
   handlers: MatchHandlers<T, E, R>,
 ): R {
   return result.match(handlers);

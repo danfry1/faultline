@@ -168,11 +168,20 @@ export function defineError(definition: {
 
 export function defineErrors<
   Namespace extends string,
-  Defs extends Record<string, ErrorDefinition>,
+  Defs extends Record<string, {
+    readonly code: string;
+    readonly status?: number;
+    readonly params?: (input: any) => any;
+    readonly message?: string | ((data: any) => string);
+  }>,
 >(
   namespace: Namespace,
   definitions: Defs,
-): ErrorGroup<Namespace, Defs> {
+): ErrorGroup<Namespace, { [K in keyof Defs]:
+  Defs[K] extends { readonly params: (input: infer I) => infer D }
+    ? ErrorDefinitionWithParams<I, D, Defs[K]['code']>
+    : ErrorDefinitionWithoutParams<Defs[K]['code']>
+}> {
   const group: Record<string, unknown> = {};
   const tags: string[] = [];
 
@@ -193,5 +202,5 @@ export function defineErrors<
     tags,
   });
 
-  return group as ErrorGroup<Namespace, Defs>;
+  return group as ReturnType<typeof defineErrors<Namespace, Defs>>;
 }
