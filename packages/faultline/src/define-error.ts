@@ -157,23 +157,19 @@ function renderMessage<Data>(
 }
 
 /**
- * Defines a single error factory with a specific tag, code, and optional data.
+ * Defines a single error factory with a specific tag and optional data.
  *
- * Two forms:
- * - **With data**: factory accepts the data type directly (message is a function)
- * - **Zero-arg**: factory takes no arguments
+ * Code is auto-generated from the tag (`'Api.NotFound'` → `'API_NOT_FOUND'`).
+ * Provide an explicit `code` to override.
  *
  * @example
  * ```ts
- * // With data — type on message IS the factory input type
  * const NotFound = defineError({
  *   tag: 'Api.NotFound',
- *   code: 'NOT_FOUND',
  *   status: 404,
  *   message: (data: { id: string }) => `Resource ${data.id} not found`,
  * });
- *
- * throw NotFound({ id: '42' });
+ * // NotFound({ id: '42' }).code === 'API_NOT_FOUND'
  * ```
  */
 // With explicit code (zero-arg)

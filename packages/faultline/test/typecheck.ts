@@ -24,12 +24,11 @@ type Expect<T extends true> = T;
 // === Three definition paths ===
 
 const UserErrors = defineErrors('User', {
-  // Path 1: Message-only — type annotation on message IS the data type
   NotFound: {
+    status: 404,
     message: (data: { userId: string }) => `User ${data.userId} not found`,
   },
-  // Path 3: Zero-arg
-  Unauthorized: {},
+  Unauthorized: { status: 401 },
 });
 
 // Path 1 type check: data is { userId: string }, not any or undefined
@@ -44,10 +43,11 @@ type _singleMsgData = Expect<Equal<Infer<typeof SingleMsgError>['data'], { count
 
 const HttpErrors = defineErrors('Http', {
   NotFound: {
+    status: 404,
     message: (data: { resource: string; id: string }) =>
       `${data.resource}:${data.id} not found`,
   },
-  Forbidden: {},
+  Forbidden: { status: 403 },
 });
 
 type UserNotFound = Infer<typeof UserErrors.NotFound>;
