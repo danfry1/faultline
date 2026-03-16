@@ -40,6 +40,14 @@ function autoCodeFromTag(tag: string): string {
   return tag.split('.').map(camelToScreamingSnake).join('_');
 }
 
+/** Derives a human-readable message from a tag: 'User.NotFound' → 'User not found' */
+function autoMessageFromTag(tag: string): string {
+  return tag
+    .split('.')
+    .map((part) => part.replace(/([a-z])([A-Z])/g, '$1 $2').toLowerCase())
+    .join(' ');
+}
+
 export interface ErrorDefinitionZeroArg<Code extends string = string> {
   readonly code?: Code;
   readonly status?: number;
@@ -146,14 +154,14 @@ function attachGroupMeta(
 
 function renderMessage<Data>(
   message: string | ((data: Data) => string) | undefined,
-  code: string,
+  tag: string,
   data: Data,
 ): string {
   if (typeof message === 'function') {
     return message(data);
   }
 
-  return message ?? code;
+  return message ?? autoMessageFromTag(tag);
 }
 
 /**
@@ -243,7 +251,7 @@ export function defineError(definition: {
       code,
       data,
       status: definition.status,
-      message: renderMessage(definition.message, code, data),
+      message: renderMessage(definition.message, definition.tag, data),
       name: definition.tag,
     });
 
