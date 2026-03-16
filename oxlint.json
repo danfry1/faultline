@@ -1,14 +1,17 @@
 {
   "$schema": "https://raw.githubusercontent.com/nicolo-ribaudo/oxlint-config-inspector/main/oxlint_config_schema.json",
   "rules": {
-    "no-unused-vars": "warn",
+    "no-unused-vars": "error",
     "no-console": "off",
-    "eqeqeq": "error"
+    "eqeqeq": "error",
+    "typescript/no-explicit-any": "error",
+    "typescript/no-non-null-assertion": "error"
   },
   "ignorePatterns": [
     "dist",
     "out",
     "node_modules",
-    "*.d.ts"
+    "*.d.ts",
+    "packages/faultline/test"
   ]
 }
