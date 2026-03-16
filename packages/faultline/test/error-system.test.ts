@@ -355,6 +355,21 @@ describe('boundaries and serialization', () => {
   });
 });
 
+describe('withContext isolation', () => {
+  test('mutating original meta object does not affect stored context', () => {
+    const meta = { requestId: 'abc', nested: { deep: 'value' } };
+    const error = UserErrors.NotFound({ userId: '1' }).withContext({ layer: 'service', operation: 'test-op', meta });
+
+    // Mutate the original meta
+    meta.requestId = 'CHANGED';
+    meta.nested.deep = 'CHANGED';
+
+    const context = error.context[error.context.length - 1];
+    expect(context?.meta?.requestId).toBe('abc');
+    expect((context?.meta?.nested as Record<string, unknown>)?.deep).toBe('value');
+  });
+});
+
 describe('withCause edge cases', () => {
   test('toJSON works with Symbol cause', () => {
     const error = UserErrors.NotFound({ userId: '1' }).withCause(Symbol('debug'));

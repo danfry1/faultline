@@ -98,7 +98,7 @@ export interface BoundaryRuntimeMeta {
 function cloneFrame(frame: ContextFrame): ContextFrame {
   return Object.freeze({
     ...frame,
-    ...(frame.meta ? { meta: { ...frame.meta } } : {}),
+    ...(frame.meta !== undefined ? { meta: structuredClone(frame.meta) } : {}),
   });
 }
 
