@@ -52,7 +52,15 @@ export interface AppError<
   readonly status?: number;
   readonly context: readonly ContextFrame[];
   readonly cause?: unknown;
+  /**
+   * Returns a new AppError with the given cause. Each call allocates a new error instance.
+   * For hot paths, consider building the error with cause at creation time via the factory.
+   */
   withCause(cause: unknown): AppError<Tag, Code, Data>;
+  /**
+   * Returns a new AppError with an additional context frame. Each call allocates a new error instance.
+   * Chain multiple context additions before error creation when possible.
+   */
   withContext(frame: ContextFrame): AppError<Tag, Code, Data>;
   toJSON(): SerializedAppError<Tag, Code, Data>;
 }
