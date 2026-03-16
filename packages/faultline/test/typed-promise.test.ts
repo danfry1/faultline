@@ -208,14 +208,28 @@ describe('abort signal cleanup', () => {
     const controller = new AbortController();
     const task = attemptAsync(async () => 'done');
 
-    // Run multiple times against same signal
+    // Track listener add/remove calls via spy
+    let addCount = 0;
+    let removeCount = 0;
+    const origAdd = controller.signal.addEventListener.bind(controller.signal);
+    const origRemove = controller.signal.removeEventListener.bind(controller.signal);
+    controller.signal.addEventListener = (...args: Parameters<typeof origAdd>) => {
+      addCount++;
+      return origAdd(...args);
+    };
+    controller.signal.removeEventListener = (...args: Parameters<typeof origRemove>) => {
+      removeCount++;
+      return origRemove(...args);
+    };
+
     for (let i = 0; i < 10; i++) {
       await task.run({ signal: controller.signal });
     }
 
-    // If listeners leaked, we'd have 10+ listeners.
-    // AbortSignal doesn't expose listener count, but we can verify
-    // the signal is still usable (not in a bad state)
+    // Every listener added should have been removed
+    expect(addCount).toBe(10);
+    expect(removeCount).toBe(10);
+
     controller.abort();
     expect(controller.signal.aborted).toBe(true);
   });

@@ -14,17 +14,11 @@ export const SystemErrors = defineErrors('System', {
   },
   Timeout: {
     message: (data: { operation?: string; timeoutMs?: number }) =>
-      data.operation
-        ? `Operation timed out: ${data.operation}`
-        : 'Operation timed out',
+      `Operation timed out${data.operation ? `: ${data.operation}` : ''}`,
   },
   Cancelled: {
     message: (data: { operation?: string; reason?: string }) =>
-      data.reason
-        ? `Operation cancelled: ${data.reason}`
-        : data.operation
-          ? `Operation cancelled: ${data.operation}`
-          : 'Operation cancelled',
+      `Operation cancelled${data.reason ? `: ${data.reason}` : data.operation ? `: ${data.operation}` : ''}`,
   },
   SerializationFailed: {
     message: (data: { reason: string }) => `Serialization failed: ${data.reason}`,

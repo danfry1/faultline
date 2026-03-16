@@ -66,7 +66,8 @@ function setRedactedAtPath(target: unknown, path: readonly string[]): void {
   const obj = target as Record<string, unknown>;
 
   if (key === '*') {
-    // Wildcard: apply to all enumerable keys (or array indices)
+    // Wildcard: apply to all enumerable keys (or array indices).
+    // Non-object items (null, primitives) are silently skipped — best-effort redaction.
     if (Array.isArray(target)) {
       for (const item of target) {
         setRedactedAtPath(item, rest);

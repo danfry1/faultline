@@ -19,11 +19,11 @@ type BoundaryMap<From extends AppError> = {
 // oxlint-ignore-next-line typescript/no-explicit-any -- `any` required for BoundaryMap constraint in conditional type
 type BoundaryOutput<Map extends BoundaryMap<any>> = ReturnType<Map[keyof Map]>;
 
+/** Typed boundary metadata — extends BoundaryRuntimeMeta with specific tag unions */
 export interface BoundaryDefinition<
   From extends AppError,
   To extends AppError,
-> {
-  readonly name: string;
+> extends BoundaryRuntimeMeta {
   readonly fromTags: readonly From['_tag'][];
   readonly toTags: readonly To['_tag'][];
 }
