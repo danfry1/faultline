@@ -3,7 +3,7 @@ import { noRawThrow } from './rules/no-raw-throw';
 
 const plugin = {
   meta: {
-    name: 'eslint-plugin-errorsys',
+    name: 'eslint-plugin-faultline',
     version: '0.1.0',
   },
   rules: {
@@ -12,10 +12,10 @@ const plugin = {
   },
   configs: {
     recommended: {
-      plugins: ['errorsys'],
+      plugins: ['faultline'],
       rules: {
-        'errorsys/uncovered-catch': 'error',
-        'errorsys/no-raw-throw': 'warn',
+        'faultline/uncovered-catch': 'error',
+        'faultline/no-raw-throw': 'warn',
       },
     },
   },

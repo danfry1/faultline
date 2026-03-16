@@ -1,7 +1,7 @@
 import { ESLintUtils } from '@typescript-eslint/utils';
 
 const createRule = ESLintUtils.RuleCreator(
-  (name) => `https://errorsys.dev/rules/${name}`,
+  (name) => `https://faultline.dev/rules/${name}`,
 );
 
 export const noRawThrow = createRule({

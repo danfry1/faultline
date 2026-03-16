@@ -6,7 +6,7 @@ import {
 } from '../utils/type-analysis';
 
 const createRule = ESLintUtils.RuleCreator(
-  (name) => `https://errorsys.dev/rules/${name}`,
+  (name) => `https://faultline.dev/rules/${name}`,
 );
 
 export const uncoveredCatch = createRule({
