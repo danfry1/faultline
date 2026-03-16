@@ -9,13 +9,9 @@
     "noUncheckedIndexedAccess": true,
     "skipLibCheck": true,
     "lib": ["ES2022", "DOM"],
-    "types": ["bun"]
+    "paths": {
+      "faultline": ["./packages/faultline/src/index.ts"]
+    }
   },
-  "references": [
-    { "path": "packages/faultline" },
-    { "path": "packages/faultline-cli" },
-    { "path": "packages/eslint-plugin-faultline" },
-    { "path": "packages/faultline-vscode" }
-  ],
-  "include": []
+  "include": ["examples/**/*.ts"]
 }
