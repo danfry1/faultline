@@ -550,7 +550,7 @@ const regResult = validateRegistration({ name: 'A', email: 'bad', age: 12 });
 if (regResult._type === 'err') {
   console.log(`${regResult.error.data.errors.length} validation errors:`);
   for (const e of regResult.error.data.errors) {
-    console.log(`  - [${e._tag}] ${e.message}`);
+    console.log(`  - [${e.error._tag}] ${e.error.message}`);
   }
 }
 
