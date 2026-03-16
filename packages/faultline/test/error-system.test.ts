@@ -343,15 +343,17 @@ describe('boundaries and serialization', () => {
     const serializedError = serializeError(UserErrors.NotFound({ userId: '77' }));
     const serializedResult = serializeResult(ok({ id: '8' }));
 
-    if (serializedError.kind !== 'app-error') {
-      throw new Error('expected app-error payload');
+    const errorResult = deserializeError(serializedError);
+    expect(isOk(errorResult)).toBe(true);
+    if (isOk(errorResult)) {
+      expect(errorResult.value._tag).toBe('User.NotFound');
     }
 
-    const error = deserializeError(serializedError);
-    const result = deserializeResult(serializedResult);
-
-    expect(error._tag).toBe('User.NotFound');
-    expect(isOk(result)).toBe(true);
+    const resultResult = deserializeResult(serializedResult);
+    expect(isOk(resultResult)).toBe(true);
+    if (isOk(resultResult)) {
+      expect(isOk(resultResult.value)).toBe(true);
+    }
   });
 });
 

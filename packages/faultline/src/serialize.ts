@@ -80,60 +80,93 @@ export function serializeResult<T, E extends AppError>(
 }
 
 export function deserializeError(
-  input: SerializedAppError,
-  _catalog?: readonly unknown[],
-): AppError {
+  input: unknown,
+): Result<AppError, AppError> {
+  if (
+    input === null ||
+    input === undefined ||
+    typeof input !== 'object' ||
+    Array.isArray(input)
+  ) {
+    return err(SystemErrors.SerializationFailed({
+      reason: `Expected serialized error object, got ${input === null ? 'null' : typeof input}`,
+    }));
+  }
+
   if (!isSerializedAppError(input)) {
-    throw SystemErrors.SerializationFailed({
-      reason: 'Invalid serialized app error payload',
-    });
+    return err(SystemErrors.SerializationFailed({
+      reason: 'Input does not match serialized AppError format',
+    }));
   }
 
   if (input.version !== SERIALIZED_ERROR_FORMAT_VERSION) {
-    throw SystemErrors.SerializationFailed({
-      reason: `Unsupported serialized error version: ${String(input.version)}`,
-    });
+    return err(SystemErrors.SerializationFailed({
+      reason: `Version mismatch: expected ${SERIALIZED_ERROR_FORMAT_VERSION}, got ${input.version}`,
+    }));
   }
 
-  return createAppError({
+  // Recursively deserialize cause if it's a serialized AppError
+  let cause: unknown = input.cause;
+  if (cause && typeof cause === 'object' && 'kind' in cause) {
+    const causeObj = cause as SerializedError;
+    if (causeObj.kind === 'app-error' && isSerializedAppError(causeObj)) {
+      const causeResult = deserializeError(causeObj);
+      if (isOk(causeResult)) {
+        cause = causeResult.value;
+      }
+      // If cause deserialization fails, keep original serialized form
+    }
+  }
+
+  const error = createAppError({
     tag: input._tag,
     code: input.code,
-    message: input.message,
     data: input.data,
     status: input.status,
+    message: input.message,
+    name: input._tag,
     context: input.context,
-    cause: input.cause,
-    name: input.name,
+    cause,
   });
+
+  return ok(error);
 }
 
 export function deserializeResult<T>(
-  input: SerializedResult<T>,
-): Result<T, AppError> {
+  input: unknown,
+): Result<Result<T, AppError>, AppError> {
   if (
     input === null ||
+    input === undefined ||
     typeof input !== 'object' ||
-    input.kind !== 'result' ||
-    input.version !== SERIALIZED_RESULT_FORMAT_VERSION
+    Array.isArray(input)
   ) {
-    throw SystemErrors.SerializationFailed({
-      reason: 'Invalid serialized result payload',
-    });
+    return err(SystemErrors.SerializationFailed({
+      reason: `Expected serialized result object, got ${input === null ? 'null' : typeof input}`,
+    }));
   }
 
-  if (input.state === 'ok') {
-    return ok(input.value);
+  const obj = input as Record<string, unknown>;
+
+  if (obj.kind !== 'result' || obj.version !== SERIALIZED_RESULT_FORMAT_VERSION) {
+    return err(SystemErrors.SerializationFailed({
+      reason: 'Input does not match serialized Result format',
+    }));
   }
 
-  if (isSerializedAppError(input.error)) {
-    return err(deserializeError(input.error));
+  if (obj.state === 'ok') {
+    return ok(ok(obj.value as T));
   }
 
-  return err(
-    SystemErrors.Unexpected({
-      message: input.error.message ?? 'Deserialized non-app error',
-      name: input.error.name,
-      detail: input.error.data,
-    }).withCause(input.error),
-  );
+  if (obj.state === 'err' && obj.error && typeof obj.error === 'object') {
+    const errorResult = deserializeError(obj.error);
+    if (isErr(errorResult)) {
+      return err(errorResult.error);
+    }
+    return ok(err(errorResult.value));
+  }
+
+  return err(SystemErrors.SerializationFailed({
+    reason: `Unknown result type: ${String(obj.state)}`,
+  }));
 }
