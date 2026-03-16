@@ -9,8 +9,7 @@ const DomainErrors = defineErrors('Domain', {
   NotFound: {
     code: 'DOMAIN_NOT_FOUND',
     status: 404,
-    params: (input: { id: string }) => input,
-    message: ({ id }) => `Not found: ${id}`,
+    message: (data: { id: string }) => `Not found: ${data.id}`,
   },
   Forbidden: {
     code: 'DOMAIN_FORBIDDEN',
@@ -22,8 +21,7 @@ const HttpErrors = defineErrors('Http', {
   NotFound: {
     code: 'HTTP_NOT_FOUND',
     status: 404,
-    params: (input: { resource: string }) => input,
-    message: ({ resource }) => `${resource} not found`,
+    message: (data: { resource: string }) => `${data.resource} not found`,
   },
   Forbidden: {
     code: 'HTTP_FORBIDDEN',

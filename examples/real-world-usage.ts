@@ -34,23 +34,17 @@ const UserErrors = defineErrors('User', {
   NotFound: {
     code: 'USER_NOT_FOUND',
     status: 404,
-    params: (input: { userId: string }) => input,
-    message: ({ userId }) => `User ${userId} not found`,
+    message: (data: { userId: string }) => `User ${data.userId} not found`,
   },
   InvalidEmail: {
     code: 'USER_INVALID_EMAIL',
     status: 400,
-    params: (input: { email: string; reason?: string }) => ({
-      email: input.email,
-      reason: input.reason ?? 'invalid format',
-    }),
-    message: ({ email }) => `Invalid email: ${email}`,
+    message: (data: { email: string; reason: string }) => `Invalid email: ${data.email}`,
   },
   AlreadyExists: {
     code: 'USER_ALREADY_EXISTS',
     status: 409,
-    params: (input: { email: string }) => input,
-    message: ({ email }) => `User with email ${email} already exists`,
+    message: (data: { email: string }) => `User with email ${data.email} already exists`,
   },
   Unauthorized: {
     code: 'USER_UNAUTHORIZED',
@@ -62,15 +56,13 @@ const PaymentErrors = defineErrors('Payment', {
   InsufficientFunds: {
     code: 'PAYMENT_INSUFFICIENT_FUNDS',
     status: 402,
-    params: (input: { required: number; available: number }) => input,
-    message: ({ required, available }) =>
-      `Insufficient funds: need ${required}, have ${available}`,
+    message: (data: { required: number; available: number }) =>
+      `Insufficient funds: need ${data.required}, have ${data.available}`,
   },
   CardDeclined: {
     code: 'PAYMENT_CARD_DECLINED',
     status: 402,
-    params: (input: { last4: string; reason: string }) => input,
-    message: ({ last4, reason }) => `Card ending ${last4} declined: ${reason}`,
+    message: (data: { last4: string; reason: string }) => `Card ending ${data.last4} declined: ${data.reason}`,
   },
   GatewayTimeout: {
     code: 'PAYMENT_GATEWAY_TIMEOUT',
@@ -82,14 +74,12 @@ const HttpErrors = defineErrors('Http', {
   BadRequest: {
     code: 'HTTP_BAD_REQUEST',
     status: 400,
-    params: (input: { errors: Array<{ field: string; message: string }> }) => input,
-    message: () => 'Bad request',
+    message: (data: { errors: Array<{ field: string; message: string }> }) => 'Bad request',
   },
   NotFound: {
     code: 'HTTP_NOT_FOUND',
     status: 404,
-    params: (input: { resource: string; id: string }) => input,
-    message: ({ resource, id }) => `${resource} ${id} not found`,
+    message: (data: { resource: string; id: string }) => `${data.resource} ${data.id} not found`,
   },
   Forbidden: {
     code: 'HTTP_FORBIDDEN',
@@ -98,8 +88,7 @@ const HttpErrors = defineErrors('Http', {
   PaymentRequired: {
     code: 'HTTP_PAYMENT_REQUIRED',
     status: 402,
-    params: (input: { message: string }) => input,
-    message: ({ message }) => message,
+    message: (data: { message: string }) => data.message,
   },
   InternalError: {
     code: 'HTTP_INTERNAL_ERROR',
@@ -273,13 +262,11 @@ function getUserOrCreateGuest(
 const ValidationErrors = defineErrors('Validation', {
   InvalidName: {
     code: 'VALIDATION_INVALID_NAME',
-    params: (input: { name: string; reason: string }) => input,
-    message: ({ reason }) => `Invalid name: ${reason}`,
+    message: (data: { name: string; reason: string }) => `Invalid name: ${data.reason}`,
   },
   InvalidAge: {
     code: 'VALIDATION_INVALID_AGE',
-    params: (input: { age: number }) => input,
-    message: ({ age }) => `Invalid age: ${age}. Must be 18-120.`,
+    message: (data: { age: number }) => `Invalid age: ${data.age}. Must be 18-120.`,
   },
 });
 

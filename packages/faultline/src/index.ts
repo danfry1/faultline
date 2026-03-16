@@ -21,11 +21,11 @@ export type {
   SerializedCause,
 } from './error';
 
-export { defineError, defineErrors, error, ErrorOutput } from './define-error';
+export { defineError, defineErrors, ErrorOutput } from './define-error';
 export type {
   ErrorDefinition,
-  ErrorDefinitionWithParams,
-  ErrorDefinitionWithoutParams,
+  ErrorDefinitionWithData,
+  ErrorDefinitionZeroArg,
   ErrorFactory,
   ErrorGroup,
   ErrorOutputKey,

@@ -8,8 +8,7 @@ import {
 const UserErrors = defineErrors('User', {
   NotFound: {
     code: 'USER_NOT_FOUND',
-    params: (input: { userId: string }) => input,
-    message: ({ userId }) => `User ${userId} not found`,
+    message: (data: { userId: string }) => `User ${data.userId} not found`,
   },
   Unauthorized: {
     code: 'USER_UNAUTHORIZED',
@@ -19,8 +18,7 @@ const UserErrors = defineErrors('User', {
 const PaymentErrors = defineErrors('Payment', {
   Declined: {
     code: 'PAYMENT_DECLINED',
-    params: (input: { reason: string }) => input,
-    message: ({ reason }) => `Declined: ${reason}`,
+    message: (data: { reason: string }) => `Declined: ${data.reason}`,
   },
 });
 

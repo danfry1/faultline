@@ -17,7 +17,6 @@ const UserErrors = defineErrors('User', {
   NotFound: {
     code: 'USER_NOT_FOUND',
     status: 404,
-    params: (input: { userId: string }) => input,
     message: (data: { userId: string }) => `User ${data.userId} not found`,
   },
   Unauthorized: {
@@ -30,7 +29,6 @@ const PaymentErrors = defineErrors('Payment', {
   Declined: {
     code: 'PAYMENT_DECLINED',
     status: 402,
-    params: (input: { reason: string }) => input,
     message: (data: { reason: string }) => `Payment declined: ${data.reason}`,
   },
 });

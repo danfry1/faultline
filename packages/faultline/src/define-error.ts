@@ -12,53 +12,49 @@ import type {
 export const ErrorOutput: unique symbol = Symbol.for('faultline.error-output');
 export type ErrorOutputKey = typeof ErrorOutput;
 
-export interface ErrorDefinitionWithoutParams<Code extends string = string> {
+export interface ErrorDefinitionZeroArg<Code extends string = string> {
   readonly code: Code;
   readonly status?: number;
-  readonly message?: string | ((data: undefined) => string);
-  readonly params?: undefined;
+  readonly message?: string;
 }
 
-export interface ErrorDefinitionWithParams<
-  Input,
+export interface ErrorDefinitionWithData<
   Data,
   Code extends string = string,
 > {
   readonly code: Code;
   readonly status?: number;
-  readonly params: (input: Input) => Data;
-  readonly message?: string | ((data: Data) => string);
+  readonly message: (data: Data) => string;
 }
 
-// oxlint-ignore -- typescript/no-explicit-any: union member must accept all possible Input/Data type combinations
+// oxlint-ignore -- typescript/no-explicit-any: union member must accept all possible Data type combinations
 export type ErrorDefinition =
-  | ErrorDefinitionWithoutParams
-  | ErrorDefinitionWithParams<any, any>;
+  | ErrorDefinitionZeroArg
+  | ErrorDefinitionWithData<any>;
 
-export type FactoryArgs<Input> = [Input] extends [undefined]
+export type FactoryArgs<Data> = [Data] extends [undefined]
   ? []
-  : [input: Input];
+  : [data: Data];
 
 export interface ErrorFactory<
   Tag extends string,
   Code extends string,
-  Input,
   Data,
 > {
-  (...args: FactoryArgs<Input>): AppError<Tag, Code, Data>;
+  (...args: FactoryArgs<Data>): AppError<Tag, Code, Data>;
   readonly [ErrorOutput]: AppError<Tag, Code, Data>;
 }
 
 // oxlint-ignore-next-line typescript/no-explicit-any -- widest ErrorFactory type for overload implementation return
-type AnyErrorFactory = ErrorFactory<string, string, any, any>;
+type AnyErrorFactory = ErrorFactory<string, string, any>;
 
 type FactoryFromDefinition<
   Tag extends string,
-  Def extends ErrorDefinition,
-> = Def extends ErrorDefinitionWithParams<infer Input, infer Data, infer Code>
-  ? ErrorFactory<Tag, Code, Input, Data>
-  : Def extends ErrorDefinitionWithoutParams<infer Code>
-    ? ErrorFactory<Tag, Code, undefined, undefined>
+  Def,
+> = Def extends ErrorDefinitionWithData<infer D, infer Code>
+  ? ErrorFactory<Tag, Code, D>
+  : Def extends ErrorDefinitionZeroArg<infer Code>
+    ? ErrorFactory<Tag, Code, undefined>
     : never;
 
 export type Infer<T extends { readonly [ErrorOutput]: unknown }> = T[ErrorOutputKey];
@@ -66,7 +62,7 @@ export type Infer<T extends { readonly [ErrorOutput]: unknown }> = T[ErrorOutput
 /**
  * Constraint for error definitions in `defineErrors`. Uses `never` for callback parameter
  * types to prevent TypeScript from providing `any` contextual typing — this preserves
- * the user's explicit type annotations on `message` and `params` callbacks.
+ * the user's explicit type annotations on `message` callbacks.
  *
  * By contravariance, `(data: X) => string` is assignable to `(data: never) => string`
  * for any X, so this constraint accepts all function signatures.
@@ -74,41 +70,8 @@ export type Infer<T extends { readonly [ErrorOutput]: unknown }> = T[ErrorOutput
 type ErrorDefConstraint = {
   readonly code: string;
   readonly status?: number;
-  readonly params?: (input: never) => unknown;
   readonly message?: string | ((data: never) => string);
 };
-
-/**
- * Type-safe wrapper for error definitions within {@link defineErrors}.
- *
- * Wrapping a definition with `error()` creates an independent generic inference site,
- * allowing TypeScript to infer the `message` callback parameter type from the `params`
- * return type. Without it, `message` data is `any` due to a TypeScript limitation with
- * per-key inference in Record generics.
- *
- * Zero cost at runtime — just returns the definition unchanged.
- *
- * @example
- * ```ts
- * const UserErrors = defineErrors('User', {
- *   NotFound: error({
- *     code: 'USER_NOT_FOUND',
- *     params: (input: { userId: string }) => input,
- *     message: ({ userId }) => `User ${userId} not found`, // userId is typed!
- *   }),
- *   Unauthorized: { code: 'USER_UNAUTHORIZED' }, // simple defs don't need wrapper
- * });
- * ```
- */
-export function error<Code extends string>(
-  def: ErrorDefinitionWithoutParams<Code>,
-): ErrorDefinitionWithoutParams<Code>;
-export function error<Code extends string, Input, Data>(
-  def: ErrorDefinitionWithParams<Input, Data, Code>,
-): ErrorDefinitionWithParams<Input, Data, Code>;
-export function error(def: ErrorDefinition): ErrorDefinition {
-  return def;
-}
 
 export type ErrorGroup<
   Namespace extends string,
@@ -163,16 +126,15 @@ function renderMessage<Data>(
 }
 
 /**
- * Defines a single error factory with a specific tag, code, and optional params.
+ * Defines a single error factory with a specific tag, code, and optional data.
  *
- * Three forms:
- * - **Message-only**: factory accepts the message data type directly (most common)
- * - **With params**: factory accepts input, `params` transforms to data (for Input ≠ Data)
+ * Two forms:
+ * - **With data**: factory accepts the data type directly (message is a function)
  * - **Zero-arg**: factory takes no arguments
  *
  * @example
  * ```ts
- * // Message-only — type on message IS the factory input type
+ * // With data — type on message IS the factory input type
  * const NotFound = defineError({
  *   tag: 'Api.NotFound',
  *   code: 'NOT_FOUND',
@@ -186,19 +148,8 @@ function renderMessage<Data>(
 export function defineError<Tag extends string, Code extends string>(
   definition: {
     readonly tag: Tag;
-  } & ErrorDefinitionWithoutParams<Code>,
-): ErrorFactory<Tag, Code, undefined, undefined>;
-export function defineError<
-  Tag extends string,
-  Code extends string,
-  Input,
-  Data,
->(
-  definition: {
-    readonly tag: Tag;
-  } & ErrorDefinitionWithParams<Input, Data, Code>,
-): ErrorFactory<Tag, Code, Input, Data>;
-// Message-only overload: no params, message is a typed function → Data = message param type, Input = Data
+  } & ErrorDefinitionZeroArg<Code>,
+): ErrorFactory<Tag, Code, undefined>;
 export function defineError<
   Tag extends string,
   Code extends string,
@@ -210,27 +161,18 @@ export function defineError<
     readonly status?: number;
     readonly message: (data: Data) => string;
   },
-): ErrorFactory<Tag, Code, Data, Data>;
-// oxlint-ignore -- typescript/no-explicit-any: overload implementation must accept all param/data type combinations
+): ErrorFactory<Tag, Code, Data>;
+// oxlint-ignore -- typescript/no-explicit-any: overload implementation must accept all data type combinations
 export function defineError(definition: {
   readonly tag: string;
   readonly code: string;
   readonly status?: number;
-  readonly params?: ((input: any) => any) | undefined;
   readonly message?: string | ((data: any) => string);
 } & ErrorDefinition): AnyErrorFactory {
-  const hasParams = typeof definition.params === 'function';
-  const hasMessageFn = !hasParams && typeof definition.message === 'function';
+  const hasMessageFn = typeof definition.message === 'function';
 
   const factory = (...args: unknown[]) => {
-    if (hasParams) {
-      if (args.length !== 1) {
-        throw new TypeError(
-          `Error factory ${definition.tag} expects exactly one argument.`,
-        );
-      }
-    } else if (hasMessageFn) {
-      // Message-only: factory accepts data directly as first arg
+    if (hasMessageFn) {
       if (args.length !== 1) {
         throw new TypeError(
           `Error factory ${definition.tag} expects exactly one argument.`,
@@ -242,7 +184,7 @@ export function defineError(definition: {
       );
     }
 
-    const data = hasParams ? definition.params!(args[0]) : hasMessageFn ? args[0] : undefined;
+    const data = hasMessageFn ? args[0] : undefined;
 
     const instance = createAppError({
       tag: definition.tag,
@@ -280,9 +222,8 @@ export function defineError(definition: {
 /**
  * Defines a group of related error factories under a shared namespace.
  *
- * Three forms per definition:
- * - **Message-only**: annotate the message data param — it becomes the factory input type
- * - **With params**: use when Input ≠ Data (transforms). Wrap with {@link error}() for message inference.
+ * Two forms per definition:
+ * - **With data**: annotate the message data param — it becomes the factory input type
  * - **Zero-arg**: just `{ code: '...' }` — factory takes no arguments
  *
  * @example
@@ -307,14 +248,9 @@ export function defineErrors<
   namespace: Namespace,
   definitions: Defs,
 ): ErrorGroup<Namespace, { [K in keyof Defs]:
-  // Branch 1: has params → infer Input and Data from params function
-  Defs[K] extends { readonly params: (input: infer I) => infer D }
-    ? ErrorDefinitionWithParams<I, D, Defs[K] extends { readonly code: infer C extends string } ? C : string>
-    // Branch 2: no params but message is a function → infer Data from message, use as both Input and Data
-    : Defs[K] extends { readonly message: (data: infer D) => string }
-      ? ErrorDefinitionWithParams<D, D, Defs[K] extends { readonly code: infer C extends string } ? C : string>
-      // Branch 3: zero-arg (no params, no typed message)
-      : ErrorDefinitionWithoutParams<Defs[K] extends { readonly code: infer C extends string } ? C : string>
+  Defs[K] extends { readonly message: (data: infer D) => string }
+    ? ErrorDefinitionWithData<D, Defs[K] extends { readonly code: infer C extends string } ? C : string>
+    : ErrorDefinitionZeroArg<Defs[K] extends { readonly code: infer C extends string } ? C : string>
 }> {
   const group: Record<string, unknown> = {};
   const tags: string[] = [];

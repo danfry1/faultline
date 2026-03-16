@@ -6,7 +6,6 @@ import {
   defineBoundary,
   defineError,
   defineErrors,
-  error,
   err,
   ok,
   type AppError,
@@ -50,7 +49,6 @@ type _singleMsgData = Expect<Equal<Infer<typeof SingleMsgError>['data'], { count
 const HttpErrors = defineErrors('Http', {
   NotFound: {
     code: 'HTTP_NOT_FOUND',
-    params: (input: { resource: string; id: string }) => input,
     message: (data: { resource: string; id: string }) =>
       `${data.resource}:${data.id} not found`,
   },

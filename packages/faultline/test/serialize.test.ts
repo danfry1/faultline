@@ -21,8 +21,7 @@ const TestErrors = defineErrors('Test', {
   NotFound: {
     code: 'TEST_NOT_FOUND',
     status: 404,
-    params: (input: { id: string }) => input,
-    message: ({ id }) => `Not found: ${id}`,
+    message: (data: { id: string }) => `Not found: ${data.id}`,
   },
   Forbidden: {
     code: 'TEST_FORBIDDEN',
