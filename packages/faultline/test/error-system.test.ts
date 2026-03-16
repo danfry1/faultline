@@ -354,3 +354,37 @@ describe('boundaries and serialization', () => {
     expect(isOk(result)).toBe(true);
   });
 });
+
+describe('withCause edge cases', () => {
+  test('toJSON works with Symbol cause', () => {
+    const error = UserErrors.NotFound({ userId: '1' }).withCause(Symbol('debug'));
+    const json = error.toJSON();
+    expect(json.cause).toBeDefined();
+    expect(json.cause?.name).toBe('Symbol');
+  });
+
+  test('toJSON works with null cause', () => {
+    const error = UserErrors.NotFound({ userId: '1' }).withCause(null);
+    const json = error.toJSON();
+    // null cause should not produce a cause entry
+    expect(json.cause).toBeUndefined();
+  });
+
+  test('toJSON works with undefined cause', () => {
+    const error = UserErrors.NotFound({ userId: '1' }).withCause(undefined);
+    const json = error.toJSON();
+    expect(json.cause).toBeUndefined();
+  });
+
+  test('toJSON works with numeric cause', () => {
+    const error = UserErrors.NotFound({ userId: '1' }).withCause(42);
+    const json = error.toJSON();
+    expect(json.cause).toBeDefined();
+  });
+
+  test('toJSON works with BigInt cause', () => {
+    const error = UserErrors.NotFound({ userId: '1' }).withCause(BigInt(9007199254740991));
+    const json = error.toJSON();
+    expect(json.cause).toBeDefined();
+  });
+});

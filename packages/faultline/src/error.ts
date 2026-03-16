@@ -113,15 +113,14 @@ function normalizeContext(
 }
 
 function serializeCauseValue(cause: unknown): SerializedError | undefined {
-  if (cause === undefined) {
+  if (cause === null || cause === undefined) {
     return undefined;
   }
 
-  if (isAppError(cause)) {
-    return cause.toJSON();
-  }
-
   if (cause instanceof Error) {
+    if (isAppError(cause)) {
+      return serializeAppError(cause);
+    }
     return {
       kind: 'cause',
       name: cause.name,
@@ -130,21 +129,18 @@ function serializeCauseValue(cause: unknown): SerializedError | undefined {
     };
   }
 
-  if (
-    cause !== null &&
-    (typeof cause === 'object' || typeof cause === 'function')
-  ) {
-    return {
-      kind: 'cause',
-      message: 'Non-Error cause',
-      data: cause,
-    };
+  if (typeof cause === 'symbol') {
+    return { kind: 'cause', name: 'Symbol', message: cause.toString() };
+  }
+
+  if (typeof cause === 'bigint') {
+    return { kind: 'cause', name: 'BigInt', message: cause.toString() };
   }
 
   return {
     kind: 'cause',
+    name: typeof cause === 'object' ? cause.constructor?.name ?? 'Object' : typeof cause,
     message: String(cause),
-    data: cause,
   };
 }
 
@@ -261,12 +257,7 @@ export function createAppError<
 }
 
 export function isAppError(value: unknown): value is AppError {
-  return (
-    value instanceof Error &&
-    value !== null &&
-    typeof value === 'object' &&
-    APP_ERROR_SYMBOL in value
-  );
+  return value instanceof Error && APP_ERROR_SYMBOL in value;
 }
 
 export function isSerializedAppError(value: unknown): value is SerializedAppError {
