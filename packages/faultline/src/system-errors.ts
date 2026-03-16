@@ -39,14 +39,10 @@ export const SystemErrors = defineErrors('System', {
   },
   BoundaryViolation: {
     code: 'SYSTEM_BOUNDARY_VIOLATION',
-    params: (input: {
-      boundary: string;
-      fromTag: string;
-      message?: string;
-    }) => input,
-    message: (data: { boundary: string; fromTag: string; message?: string }) =>
+    params: (input: { boundary: string; fromTag: string; expectedTags?: string[]; message?: string }) => input,
+    message: (data: { boundary: string; fromTag: string; expectedTags?: string[]; message?: string }) =>
       data.message ??
-      `Boundary ${data.boundary} cannot handle ${data.fromTag}`,
+      `Boundary "${data.boundary}" received unhandled error tag "${data.fromTag}"${data.expectedTags ? `. Expected: [${data.expectedTags.join(', ')}]` : ''}`,
   },
 });
 

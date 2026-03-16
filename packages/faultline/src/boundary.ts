@@ -104,14 +104,14 @@ export function defineBoundary(
       return SystemErrors.BoundaryViolation({
         boundary: config.name,
         fromTag: error._tag,
+        expectedTags: Object.keys(config.map),
       }).withCause(error);
     }
 
     let mapped = handler(error);
 
-    if (mapped.cause === undefined) {
-      mapped = mapped.withCause(error);
-    }
+    // Always set original error as cause, regardless of whether handler set its own
+    mapped = mapped.withCause(error);
 
     return mapped.withContext(
       boundaryFrame(config.name, error._tag, mapped._tag),
