@@ -1,25 +1,11 @@
-import type { AppError, ContextFrame, SerializedAppError } from './error';
-import { type Result, type ResultOk, type ResultErr, ok, err, isOk, isErr } from './result';
-import type { UnexpectedError } from './system-errors';
-
-type TagsOf<E extends AppError> = E['_tag'];
-
-type ExhaustiveMatchHandlers<T, E extends AppError, R> = {
-  readonly ok: (value: T) => R;
-} & {
-  readonly [K in TagsOf<E>]: (error: Extract<E, { _tag: K }>) => R;
-};
-
-type PartialMatchHandlers<T, E extends AppError, R> = {
-  readonly ok: (value: T) => R;
-  readonly _: (error: E) => R;
-} & Partial<{
-  readonly [K in TagsOf<E>]: (error: Extract<E, { _tag: K }>) => R;
-}>;
-
-type MatchHandlers<T, E extends AppError, R> =
-  | ExhaustiveMatchHandlers<T, E, R>
-  | PartialMatchHandlers<T, E, R>;
+import type { AppError, ContextFrame } from './error';
+import {
+  type Result,
+  type ExhaustiveMatchHandlers,
+  type MatchHandlers,
+  type TagsOf,
+  ok, err, isOk, isErr,
+} from './result';
 
 export interface TaskContext {
   readonly signal?: AbortSignal;

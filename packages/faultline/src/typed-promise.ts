@@ -105,7 +105,7 @@ function getTagsForSource(source: object): ReadonlySet<string> {
  *
  * If the caught value is already an AppError whose `_tag` matches one of the
  * provided groups, it is returned with its specific type. Otherwise it is
- * wrapped via `fromUnknown()` as a `System.Unexpected` error.
+ * wrapped as a `System.Unexpected` error with the original as cause.
  */
 export function narrowError<S extends ErrorSource>(
   thrown: unknown,

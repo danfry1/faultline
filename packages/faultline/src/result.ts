@@ -1,24 +1,25 @@
 import type { AppError, ContextFrame, SerializedAppError } from './error';
 import { combinedError } from './system-errors';
 import { SystemErrors } from './system-errors';
+import type { CombinedAppError } from './system-errors';
 import { TaskResult } from './task-result';
 
-type TagsOf<E extends AppError> = E['_tag'];
+export type TagsOf<E extends AppError> = E['_tag'];
 
-type ExhaustiveMatchHandlers<T, E extends AppError, R> = {
+export type ExhaustiveMatchHandlers<T, E extends AppError, R> = {
   readonly ok: (value: T) => R;
 } & {
   readonly [K in TagsOf<E>]: (error: Extract<E, { _tag: K }>) => R;
 };
 
-type PartialMatchHandlers<T, E extends AppError, R> = {
+export type PartialMatchHandlers<T, E extends AppError, R> = {
   readonly ok: (value: T) => R;
   readonly _: (error: E) => R;
 } & Partial<{
   readonly [K in TagsOf<E>]: (error: Extract<E, { _tag: K }>) => R;
 }>;
 
-type MatchHandlers<T, E extends AppError, R> =
+export type MatchHandlers<T, E extends AppError, R> =
   | ExhaustiveMatchHandlers<T, E, R>
   | PartialMatchHandlers<T, E, R>;
 
@@ -298,16 +299,13 @@ export function all<const Results extends readonly Result<any, any>[]>(
   results: readonly [...Results],
 ): [ErrorUnion<Results>] extends [never]
   ? Result<SuccessTuple<Results>, never>
-  : Result<SuccessTuple<Results>, ReturnType<typeof combinedError<ErrorUnion<Results>>>>;
+  : Result<SuccessTuple<Results>, CombinedAppError<ErrorUnion<Results>>>;
 // oxlint-ignore -- typescript/no-explicit-any: `any` required in overload constraint for generic inference
 export function all<const Results extends readonly TaskResult<any, any>[]>(
   results: readonly [...Results],
 ): [TaskErrorUnion<Results>] extends [never]
   ? TaskResult<TaskSuccessTuple<Results>, never>
-  : TaskResult<
-      TaskSuccessTuple<Results>,
-      ReturnType<typeof combinedError<TaskErrorUnion<Results>>>
-    >;
+  : TaskResult<TaskSuccessTuple<Results>, CombinedAppError<TaskErrorUnion<Results>>>;
 // oxlint-ignore -- typescript/no-explicit-any: overload implementation must accept all overload signatures
 export function all(
   results: readonly Result<any, any>[] | readonly TaskResult<any, any>[],

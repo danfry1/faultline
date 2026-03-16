@@ -1,6 +1,7 @@
 import type { AppError, ContextFrame } from './error';
 import { isAppError } from './error';
 import { SystemErrors } from './system-errors';
+import type { UnexpectedError } from './system-errors';
 
 export interface FromUnknownOptions {
   readonly layer?: ContextFrame['layer'];
@@ -39,6 +40,8 @@ function toContextFrame(options: FromUnknownOptions): ContextFrame | undefined {
  * If the value is already an AppError, it is returned as-is (with optional context).
  * Otherwise, wraps it as `System.Unexpected`.
  */
+export function fromUnknown<T extends AppError>(thrown: T, options?: FromUnknownOptions): T;
+export function fromUnknown(thrown: unknown, options?: FromUnknownOptions): UnexpectedError;
 export function fromUnknown(
   thrown: unknown,
   options: FromUnknownOptions = {},

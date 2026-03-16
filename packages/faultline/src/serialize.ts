@@ -14,6 +14,7 @@ import type { Result } from './result';
 import { ok, err } from './result';
 import { SystemErrors } from './system-errors';
 
+/** Result serialization version. Note: error version is SERIALIZED_ERROR_FORMAT_VERSION in error.ts. Both inlined in result.ts toJSON(). */
 export const SERIALIZED_RESULT_FORMAT_VERSION = 1 as const;
 
 export type SerializationFailedError = ReturnType<typeof SystemErrors.SerializationFailed>;

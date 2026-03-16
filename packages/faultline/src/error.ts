@@ -3,7 +3,7 @@ import { applyRedactions } from './redaction';
 
 export interface ContextFrame {
   readonly layer?: 'ui' | 'client' | 'service' | 'domain' | 'infra' | 'transport' | (string & {});
-  readonly operation: string;
+  readonly operation?: string;
   readonly component?: string;
   readonly requestId?: string;
   readonly traceId?: string;
@@ -18,6 +18,7 @@ export interface SerializedCause {
   readonly data?: unknown;
 }
 
+/** Error serialization version. Note: result version is SERIALIZED_RESULT_FORMAT_VERSION in serialize.ts. Both inlined in result.ts toJSON(). */
 export const SERIALIZED_ERROR_FORMAT_VERSION = 1 as const;
 
 export type SerializedError =
