@@ -57,9 +57,10 @@ function setRedactedAtPath(target: unknown, path: readonly string[]): void {
     return;
   }
 
-  // path.length > 0 guaranteed by early return above, so segment is always defined
+  // path.length > 0 guaranteed by early return above
   const [segment, ...rest] = path;
-  const key = segment as string;
+  if (segment === undefined) return;
+  const key = segment;
 
   // Type narrowing: target confirmed as non-null object above, cast to Record for property access
   const obj = target as Record<string, unknown>;
@@ -93,6 +94,18 @@ function setRedactedAtPath(target: unknown, path: readonly string[]): void {
   }
 }
 
+/**
+ * Deep-clones a value and replaces matching paths with `'[REDACTED]'`.
+ * Returns the original reference when `redactPaths` is empty (no clone).
+ *
+ * @param redactPaths Dot-separated paths to redact. Use `*` as a wildcard
+ *   segment to match all keys/indices at that level.
+ *
+ * @example
+ * ```ts
+ * applyRedactions(obj, ['data.password', 'context.*.meta.token'])
+ * ```
+ */
 export function applyRedactions<T>(
   value: T,
   redactPaths: readonly string[],

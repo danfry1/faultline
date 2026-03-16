@@ -46,8 +46,9 @@ export function fromUnknown(
   thrown: unknown,
   options: FromUnknownOptions = {},
 ): AppError {
+  const frame = toContextFrame(options);
+
   if (isAppError(thrown)) {
-    const frame = toContextFrame(options);
     return frame ? thrown.withContext(frame) : thrown;
   }
 
@@ -73,8 +74,6 @@ export function fromUnknown(
     message,
     detail,
   }).withCause(thrown);
-
-  const frame = toContextFrame(options);
 
   if (frame) {
     error = error.withContext(frame);

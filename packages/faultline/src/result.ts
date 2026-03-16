@@ -91,7 +91,7 @@ function matchErr<T, E extends AppError, R>(
   }
 
   throw SystemErrors.Unexpected({
-    message: `No handler for error tag "${error._tag}" and no wildcard "_" handler provided`,
+    message: `Unhandled error tag "${error._tag}". Provide a handler for this tag or add a wildcard "_" handler to catch all unmatched errors.`,
     name: 'MatchExhaustion',
   });
 }
