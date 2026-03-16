@@ -235,6 +235,8 @@ describe('all', () => {
     if (isErr(result)) {
       expect(result.error._tag).toBe('System.Combined');
       expect(result.error.data.errors).toHaveLength(2);
+      expect(result.error.data.errors[0]!.index).toBe(1);
+      expect(result.error.data.errors[1]!.index).toBe(2);
     }
   });
 
@@ -465,24 +467,44 @@ describe('Result toJSON', () => {
 
 describe('combinedError', () => {
   test('combined error has factory metadata', () => {
-    const errors = [UserErrors.NotFound({ userId: '1' })];
+    const errors = [{ index: 0, error: UserErrors.NotFound({ userId: '1' }) }];
     const combined = combinedError(errors);
     const meta = getFactoryMeta(combined);
-    // Currently meta is undefined because combinedError bypasses the factory system
     expect(meta).toBeDefined();
     expect(meta?.tag).toBe('System.Combined');
   });
 
   test('combined error message uses correct grammar', () => {
-    const one = combinedError([UserErrors.NotFound({ userId: '1' })]);
+    const one = combinedError([{ index: 0, error: UserErrors.NotFound({ userId: '1' }) }]);
     expect(one.message).toContain('1 failure');
     expect(one.message).not.toContain('failures');
 
     const two = combinedError([
-      UserErrors.NotFound({ userId: '1' }),
-      UserErrors.NotFound({ userId: '2' }),
+      { index: 0, error: UserErrors.NotFound({ userId: '1' }) },
+      { index: 1, error: UserErrors.NotFound({ userId: '2' }) },
     ]);
     expect(two.message).toContain('2 failures');
+  });
+});
+
+describe('all() error indices', () => {
+  test('combined error includes indices of failed results', () => {
+    const result = all([
+      ok('a'),
+      err(UserErrors.NotFound({ userId: '1' })),
+      ok('c'),
+      err(UserErrors.Unauthorized()),
+    ] as const);
+
+    expect(isErr(result)).toBe(true);
+    if (isErr(result)) {
+      expect(result.error._tag).toBe('System.Combined');
+      expect(result.error.data.errors).toHaveLength(2);
+      expect(result.error.data.errors[0]!.index).toBe(1);
+      expect(result.error.data.errors[0]!.error._tag).toBe('User.NotFound');
+      expect(result.error.data.errors[1]!.index).toBe(3);
+      expect(result.error.data.errors[1]!.error._tag).toBe('User.Unauthorized');
+    }
   });
 });
 

@@ -502,13 +502,14 @@ export function all(
   }
 
   const values: unknown[] = [];
-  const errors: AppError[] = [];
+  const errors: { index: number; error: AppError }[] = [];
 
-  for (const result of results as readonly Result<unknown, AppError>[]) {
+  for (let i = 0; i < (results as readonly Result<unknown, AppError>[]).length; i++) {
+    const result = (results as readonly Result<unknown, AppError>[])[i]!;
     if (isOk(result)) {
       values.push(result.value);
     } else {
-      errors.push(result.error);
+      errors.push({ index: i, error: result.error });
     }
   }
 

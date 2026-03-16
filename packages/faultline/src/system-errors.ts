@@ -51,14 +51,14 @@ export type UnexpectedError = ReturnType<typeof SystemErrors.Unexpected>;
 export type CombinedAppError<E extends AppError = AppError> = AppError<
   'System.Combined',
   'SYSTEM_COMBINED',
-  { readonly errors: readonly E[] }
+  { readonly errors: readonly { readonly index: number; readonly error: E }[] }
 >;
 
 const CombinedFactory = defineError({
   tag: 'System.Combined',
   code: 'SYSTEM_COMBINED',
-  params: (input: { errors: readonly AppError[] }) => input,
-  message: (data: { errors: readonly AppError[] }) =>
+  params: (input: { errors: readonly { readonly index: number; readonly error: AppError }[] }) => input,
+  message: (data: { errors: readonly { readonly index: number; readonly error: AppError }[] }) =>
     `Combined error with ${data.errors.length} ${data.errors.length === 1 ? 'failure' : 'failures'}`,
 });
 
@@ -67,7 +67,7 @@ const CombinedFactory = defineError({
  * Used by `all()` when multiple Results fail.
  */
 export function combinedError<E extends AppError>(
-  errors: readonly E[],
+  errors: readonly { readonly index: number; readonly error: E }[],
 ): CombinedAppError<E> {
   return CombinedFactory({ errors }) as CombinedAppError<E>;
 }
