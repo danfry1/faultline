@@ -65,6 +65,25 @@ type InferErrors<T extends ErrorSource> = T extends readonly (infer Item)[]
     ? O
     : never;
 
+const tagCache = new WeakMap<object, ReadonlySet<string>>();
+
+function getTagsForSource(source: object): ReadonlySet<string> {
+  const cached = tagCache.get(source);
+  if (cached) return cached;
+
+  const tags = new Set<string>();
+  const groupMeta = getGroupMeta(source);
+  if (groupMeta) {
+    for (const tag of groupMeta.tags) tags.add(tag);
+  } else {
+    const factoryMeta = getFactoryMeta(source);
+    if (factoryMeta) tags.add(factoryMeta.tag);
+  }
+
+  tagCache.set(source, tags);
+  return tags;
+}
+
 /**
  * Narrows an unknown caught value against your defined error types.
  *
@@ -92,31 +111,19 @@ export function narrowError<S extends ErrorSource>(
   thrown: unknown,
   sources: S,
 ): InferErrors<S> | UnexpectedError {
-  // Collect all valid tags from the provided sources
   const validTags = new Set<string>();
   const sourceArray = Array.isArray(sources) ? sources : [sources];
 
   for (const source of sourceArray) {
-    const groupMeta = getGroupMeta(source);
-    if (groupMeta) {
-      for (const tag of groupMeta.tags) {
-        validTags.add(tag);
-      }
-      continue;
-    }
-
-    const factoryMeta = getFactoryMeta(source);
-    if (factoryMeta) {
-      validTags.add(factoryMeta.tag);
+    for (const tag of getTagsForSource(source as object)) {
+      validTags.add(tag);
     }
   }
 
-  // If it's an AppError with a recognized tag, pass through
   if (isAppError(thrown) && validTags.has(thrown._tag)) {
     return thrown as InferErrors<S>;
   }
 
-  // Unrecognized AppError — wrap as System.Unexpected preserving it as cause
   if (isAppError(thrown)) {
     return SystemErrors.Unexpected({
       name: thrown.name,
@@ -124,7 +131,6 @@ export function narrowError<S extends ErrorSource>(
     }).withCause(thrown) as unknown as UnexpectedError;
   }
 
-  // Plain Error, primitives, etc. — delegate to fromUnknown
   return fromUnknown(thrown) as unknown as UnexpectedError;
 }
 

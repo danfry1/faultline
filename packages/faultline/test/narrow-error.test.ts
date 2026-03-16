@@ -82,3 +82,13 @@ describe('narrowError runtime validation', () => {
     expect(result).toBe(error);
   });
 });
+
+describe('narrowError performance', () => {
+  test('repeated calls with same sources produce consistent results', () => {
+    const error = UserErrors.NotFound({ userId: '1' });
+    const result1 = narrowError(error, [UserErrors]);
+    const result2 = narrowError(error, [UserErrors]);
+    expect(result1).toBe(result2); // same reference — recognized tag passes through
+    expect(result1._tag).toBe('User.NotFound');
+  });
+});
