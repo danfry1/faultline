@@ -8,6 +8,7 @@ import {
   all,
   attempt,
   attemptAsync,
+  combinedError,
   deserializeError,
   deserializeResult,
   configureErrors,
@@ -15,6 +16,7 @@ import {
   defineErrors,
   err,
   fromUnknown,
+  getFactoryMeta,
   isAppError,
   isErr,
   isOk,
@@ -454,5 +456,28 @@ describe('Result toJSON', () => {
     const json = JSON.parse(JSON.stringify(result));
     expect(json._type).toBe('err');
     expect(json.error._tag).toBe('User.NotFound');
+  });
+});
+
+describe('combinedError', () => {
+  test('combined error has factory metadata', () => {
+    const errors = [UserErrors.NotFound({ userId: '1' })];
+    const combined = combinedError(errors);
+    const meta = getFactoryMeta(combined);
+    // Currently meta is undefined because combinedError bypasses the factory system
+    expect(meta).toBeDefined();
+    expect(meta?.tag).toBe('System.Combined');
+  });
+
+  test('combined error message uses correct grammar', () => {
+    const one = combinedError([UserErrors.NotFound({ userId: '1' })]);
+    expect(one.message).toContain('1 failure');
+    expect(one.message).not.toContain('failures');
+
+    const two = combinedError([
+      UserErrors.NotFound({ userId: '1' }),
+      UserErrors.NotFound({ userId: '2' }),
+    ]);
+    expect(two.message).toContain('2 failures');
   });
 });

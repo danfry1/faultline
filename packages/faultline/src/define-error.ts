@@ -147,7 +147,7 @@ export function defineError(definition: {
 
     const data = definition.params ? definition.params(args[0]) : undefined;
 
-    return createAppError({
+    const instance = createAppError({
       tag: definition.tag,
       code: definition.code,
       data,
@@ -155,6 +155,19 @@ export function defineError(definition: {
       message: renderMessage(definition.message, definition.code, data),
       name: definition.tag,
     });
+
+    Object.defineProperty(instance, ERROR_FACTORY_META, {
+      value: {
+        tag: definition.tag,
+        code: definition.code,
+        ...(definition.status !== undefined ? { status: definition.status } : {}),
+      } satisfies ErrorFactoryRuntimeMeta,
+      enumerable: false,
+      configurable: false,
+      writable: false,
+    });
+
+    return instance;
   };
 
   attachFactoryMeta(factory, {

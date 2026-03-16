@@ -1,6 +1,5 @@
-import { createAppError } from './error';
 import type { AppError } from './error';
-import { defineErrors } from './define-error';
+import { defineError, defineErrors } from './define-error';
 
 export interface UnexpectedErrorData {
   readonly name?: string;
@@ -54,19 +53,16 @@ export type CombinedAppError<E extends AppError = AppError> = AppError<
   { readonly errors: readonly E[] }
 >;
 
+const CombinedFactory = defineError({
+  tag: 'System.Combined',
+  code: 'SYSTEM_COMBINED',
+  params: (input: { errors: readonly AppError[] }) => input,
+  message: (data: { errors: readonly AppError[] }) =>
+    `Combined error with ${data.errors.length} ${data.errors.length === 1 ? 'failure' : 'failures'}`,
+});
+
 export function combinedError<E extends AppError>(
   errors: readonly E[],
 ): CombinedAppError<E> {
-  return createAppError({
-    tag: 'System.Combined',
-    code: 'SYSTEM_COMBINED',
-    data: {
-      errors,
-    },
-    message:
-      errors.length === 1
-        ? 'Combined error with 1 failure'
-        : `Combined error with ${errors.length} failures`,
-    name: 'System.Combined',
-  }) as CombinedAppError<E>;
+  return CombinedFactory({ errors }) as CombinedAppError<E>;
 }
