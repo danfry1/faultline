@@ -48,6 +48,8 @@ export interface ErrorFactory<
 // oxlint-ignore-next-line typescript/no-explicit-any -- widest ErrorFactory type for overload implementation return
 type AnyErrorFactory = ErrorFactory<string, string, any>;
 
+type ExtractCode<D> = D extends { readonly code: infer C extends string } ? C : string;
+
 type FactoryFromDefinition<
   Tag extends string,
   Def,
@@ -249,8 +251,8 @@ export function defineErrors<
   definitions: Defs,
 ): ErrorGroup<Namespace, { [K in keyof Defs]:
   Defs[K] extends { readonly message: (data: infer D) => string }
-    ? ErrorDefinitionWithData<D, Defs[K] extends { readonly code: infer C extends string } ? C : string>
-    : ErrorDefinitionZeroArg<Defs[K] extends { readonly code: infer C extends string } ? C : string>
+    ? ErrorDefinitionWithData<D, ExtractCode<Defs[K]>>
+    : ErrorDefinitionZeroArg<ExtractCode<Defs[K]>>
 }> {
   const group: Record<string, unknown> = {};
   const tags: string[] = [];

@@ -13,6 +13,7 @@ import {
   deserializeResult,
   configureErrors,
   defineBoundary,
+  defineError,
   defineErrors,
   err,
   fromUnknown,
@@ -70,6 +71,20 @@ describe('error definition', () => {
     expect(error.message).toBe('USER_UNAUTHORIZED');
     expect(error.data).toBeUndefined();
   });
+
+  test('defineError (single) with message-only works at runtime', () => {
+    const CountError = defineError({
+      tag: 'Test.Count',
+      code: 'TEST_COUNT',
+      message: (data: { count: number }) => `Count: ${data.count}`,
+    });
+
+    const error = CountError({ count: 5 });
+    expect(error._tag).toBe('Test.Count');
+    expect(error.code).toBe('TEST_COUNT');
+    expect(error.data).toEqual({ count: 5 });
+    expect(error.message).toBe('Count: 5');
+  });
 });
 
 describe('unknown capture', () => {
@@ -93,6 +108,23 @@ describe('unknown capture', () => {
     const wrapped = fromUnknown(original);
 
     expect(wrapped).toBe(original);
+  });
+
+  test('wraps plain Error as System.Unexpected', () => {
+    const error = fromUnknown(new TypeError('bad'));
+
+    expect(error._tag).toBe('System.Unexpected');
+    expect(error.message).toBe('bad');
+    expect(isAppError(error.cause)).toBe(false);
+    expect(error.cause).toBeInstanceOf(TypeError);
+  });
+
+  test('wraps null/undefined as System.Unexpected', () => {
+    const fromNull = fromUnknown(null);
+    expect(fromNull._tag).toBe('System.Unexpected');
+
+    const fromUndef = fromUnknown(undefined);
+    expect(fromUndef._tag).toBe('System.Unexpected');
   });
 });
 
