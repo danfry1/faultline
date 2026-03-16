@@ -34,6 +34,11 @@ function toContextFrame(options: FromUnknownOptions): ContextFrame | undefined {
   };
 }
 
+/**
+ * Wraps an unknown thrown value into a typed AppError.
+ * If the value is already an AppError, it is returned as-is (with optional context).
+ * Otherwise, wraps it as `System.Unexpected`.
+ */
 export function fromUnknown(
   thrown: unknown,
   options: FromUnknownOptions = {},

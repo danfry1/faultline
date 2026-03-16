@@ -67,6 +67,23 @@ function attachBoundaryMeta(target: Function, meta: BoundaryRuntimeMeta): void {
   });
 }
 
+/**
+ * Defines an error boundary that maps errors from one domain to another.
+ * The original error is always preserved as the cause.
+ *
+ * @example
+ * ```ts
+ * const boundary = defineBoundary({
+ *   name: 'domain-to-http',
+ *   from: DomainErrors,
+ *   to: HttpErrors,
+ *   map: {
+ *     'Domain.NotFound': (e) => HttpErrors.NotFound({ resource: e.data.id }),
+ *     'Domain.Forbidden': () => HttpErrors.Forbidden(),
+ *   },
+ * });
+ * ```
+ */
 export function defineBoundary<
   Source extends OutputCarrier,
   Map extends BoundaryMap<Infer<Source>>,

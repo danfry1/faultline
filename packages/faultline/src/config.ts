@@ -19,6 +19,7 @@ let currentConfig: { captureStack: boolean; redactPaths: string[] } = {
 };
 let cachedFrozen: Readonly<ErrorSystemConfig> = Object.freeze({ ...defaults, redactPaths: [...defaults.redactPaths] });
 
+/** Configure global error system settings. Merges provided values into current config. */
 export function configureErrors(
   input: Partial<ErrorSystemConfig>,
 ): Readonly<ErrorSystemConfig> {
@@ -38,10 +39,12 @@ export function configureErrors(
   return cachedFrozen;
 }
 
+/** Returns the current frozen error system configuration. Same reference until config changes. */
 export function getErrorConfig(): Readonly<ErrorSystemConfig> {
   return cachedFrozen;
 }
 
+/** Resets error system configuration to defaults. Useful for test isolation. */
 export function resetErrorConfig(): void {
   currentConfig = {
     captureStack: defaults.captureStack,

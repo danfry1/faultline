@@ -244,26 +244,31 @@ class ErrImpl<T, E extends AppError> implements ResultErr<T, E> {
   }
 }
 
+/** Creates a successful Result containing the given value. */
 export function ok<T>(value: T): ResultOk<T, never> {
   return new OkImpl(value);
 }
 
+/** Creates a failed Result containing the given AppError. */
 export function err<E extends AppError>(error: E): ResultErr<never, E> {
   return new ErrImpl(error);
 }
 
+/** Returns `true` if the result is Ok. Type-narrows to `ResultOk`. */
 export function isOk<T, E extends AppError>(
   result: Result<T, E>,
 ): result is ResultOk<T, E> {
   return result._type === 'ok';
 }
 
+/** Returns `true` if the result is Err. Type-narrows to `ResultErr`. */
 export function isErr<T, E extends AppError>(
   result: Result<T, E>,
 ): result is ResultErr<T, E> {
   return result._type === 'err';
 }
 
+/** Returns `true` if the result is Err with the specified tag. */
 export function isErrTag<
   T,
   E extends AppError,
@@ -286,29 +291,38 @@ async function resolveTaskLike<T, E extends AppError>(
   return awaited instanceof TaskResult ? awaited.run(context) : awaited;
 }
 
+/**
+ * A lazy, composable async computation that produces a `Result`.
+ * TaskResults are not executed until `.run()` is called.
+ */
 export class TaskResult<T, E extends AppError = never> {
   constructor(private readonly executor: TaskExecutor<T, E>) {}
 
+  /** Creates a TaskResult from an executor function. */
   static from<T, E extends AppError>(
     executor: TaskExecutor<T, E>,
   ): TaskResult<T, E> {
     return new TaskResult(executor);
   }
 
+  /** Wraps an existing Result as a TaskResult. */
   static fromResult<T, E extends AppError>(result: Result<T, E>): TaskResult<T, E> {
     return TaskResult.from(async () => result);
   }
 
+  /** Creates a TaskResult from a factory that returns a Promise of Result. The factory is called on each `.run()`. */
   static fromPromise<T, E extends AppError>(
     factory: () => Promise<Result<T, E>>,
   ): TaskResult<T, E> {
     return new TaskResult(async () => factory());
   }
 
+  /** Creates a successful TaskResult. */
   static ok<T>(value: T): TaskResult<T, never> {
     return TaskResult.fromResult(ok(value));
   }
 
+  /** Creates a failed TaskResult. */
   static err<E extends AppError>(error: E): TaskResult<never, E> {
     return TaskResult.fromResult(err(error));
   }
@@ -446,6 +460,11 @@ type TaskSuccessTuple<Results extends readonly TaskResult<any, any>[]> = {
 type TaskErrorUnion<Results extends readonly TaskResult<any, any>[]> =
   Results[number] extends TaskResult<any, infer E> ? E : never;
 
+/**
+ * Collects an array of Results into a single Result.
+ * On success, returns an Ok with all values as a tuple.
+ * On failure, returns an Err with a CombinedAppError containing all errors.
+ */
 export function all(
   results: readonly [],
 ): Result<readonly [], never>;
@@ -493,6 +512,14 @@ export function all(
   return ok(values);
 }
 
+/**
+ * Runs a synchronous function and captures thrown exceptions as typed errors.
+ *
+ * @example
+ * ```ts
+ * const result = attempt(() => JSON.parse(input));
+ * ```
+ */
 export function attempt<T, E extends AppError = AppError>(
   fn: () => T,
   options: AttemptOptions<E> = {},
@@ -562,6 +589,19 @@ function defaultAbortMapper(
   });
 }
 
+/**
+ * Runs an async function and captures thrown exceptions as typed errors.
+ * Supports abort signals for cooperative cancellation.
+ *
+ * @example
+ * ```ts
+ * const task = attemptAsync(async (signal) => {
+ *   const response = await fetch(url, { signal });
+ *   return response.json();
+ * });
+ * const result = await task.run();
+ * ```
+ */
 export function attemptAsync<
   T,
   E extends AppError = AppError,
@@ -604,6 +644,7 @@ export function attemptAsync<
   });
 }
 
+/** Pattern-matches a Result against tag-specific handlers. */
 export function match<T, E extends AppError, R>(
   result: Result<T, E>,
   handlers: ExhaustiveMatchHandlers<T, E, R>,
@@ -619,6 +660,7 @@ export function match<T, E extends AppError, R>(
   return result.match(handlers);
 }
 
+/** Recovers from a specific error tag, returning a new Result. */
 export function catchTag<
   T,
   E extends AppError,

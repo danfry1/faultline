@@ -248,6 +248,7 @@ class DefinedAppError<
   }
 }
 
+/** @internal Creates an AppError instance. Use `defineError`/`defineErrors` instead. */
 export function createAppError<
   Tag extends string,
   Code extends string,
@@ -256,10 +257,12 @@ export function createAppError<
   return new DefinedAppError(init);
 }
 
+/** Returns `true` if the value is an AppError instance. */
 export function isAppError(value: unknown): value is AppError {
   return value instanceof Error && APP_ERROR_SYMBOL in value;
 }
 
+/** Returns `true` if the value matches the serialized AppError format. */
 export function isSerializedAppError(value: unknown): value is SerializedAppError {
   return (
     value !== null &&
@@ -272,6 +275,7 @@ export function isSerializedAppError(value: unknown): value is SerializedAppErro
   );
 }
 
+/** Returns `true` if the value matches the serialized cause format. */
 export function isSerializedCause(value: unknown): value is SerializedCause {
   return (
     value !== null &&
@@ -280,6 +284,7 @@ export function isSerializedCause(value: unknown): value is SerializedCause {
   );
 }
 
+/** Returns factory runtime metadata (tag, code, status) from an error factory or instance, or `undefined`. */
 export function getFactoryMeta(value: unknown): ErrorFactoryRuntimeMeta | undefined {
   if (!value || (typeof value !== 'function' && typeof value !== 'object')) {
     return undefined;
@@ -290,6 +295,7 @@ export function getFactoryMeta(value: unknown): ErrorFactoryRuntimeMeta | undefi
   ] as ErrorFactoryRuntimeMeta | undefined;
 }
 
+/** Returns group runtime metadata (namespace, tags) from an error group, or `undefined`. */
 export function getGroupMeta(value: unknown): ErrorGroupRuntimeMeta | undefined {
   if (!value || (typeof value !== 'function' && typeof value !== 'object')) {
     return undefined;
@@ -300,6 +306,7 @@ export function getGroupMeta(value: unknown): ErrorGroupRuntimeMeta | undefined 
   ] as ErrorGroupRuntimeMeta | undefined;
 }
 
+/** Returns boundary runtime metadata (name, fromTags, toTags) from a boundary function, or `undefined`. */
 export function getBoundaryMeta(value: unknown): BoundaryRuntimeMeta | undefined {
   if (!value || (typeof value !== 'function' && typeof value !== 'object')) {
     return undefined;

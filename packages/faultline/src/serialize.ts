@@ -36,6 +36,7 @@ export interface SerializedResultErr {
 
 export type SerializedResult<T> = SerializedResultOk<T> | SerializedResultErr;
 
+/** Serializes any error (AppError, Error, or unknown) into a stable JSON-safe format. */
 export function serializeError(
   error: SerializableError,
 ): SerializedError {
@@ -59,6 +60,7 @@ export function serializeError(
   };
 }
 
+/** Serializes a Result into a stable JSON-safe format. */
 export function serializeResult<T, E extends AppError>(
   result: Result<T, E>,
 ): SerializedResult<T> {
@@ -79,6 +81,10 @@ export function serializeResult<T, E extends AppError>(
   };
 }
 
+/**
+ * Deserializes a serialized error back into an AppError.
+ * Returns a Result — `Ok(AppError)` on success, `Err(SerializationFailed)` on invalid input.
+ */
 export function deserializeError(
   input: unknown,
 ): Result<AppError, AppError> {
@@ -132,6 +138,10 @@ export function deserializeError(
   return ok(error);
 }
 
+/**
+ * Deserializes a serialized result back into a Result.
+ * Returns a Result — `Ok(Result)` on success, `Err(SerializationFailed)` on invalid input.
+ */
 export function deserializeResult<T>(
   input: unknown,
 ): Result<Result<T, AppError>, AppError> {

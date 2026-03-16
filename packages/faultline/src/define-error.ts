@@ -110,6 +110,22 @@ function renderMessage<Data>(
   return message ?? code;
 }
 
+/**
+ * Defines a single error factory with a specific tag, code, and optional params.
+ *
+ * @example
+ * ```ts
+ * const NotFound = defineError({
+ *   tag: 'Api.NotFound',
+ *   code: 'NOT_FOUND',
+ *   status: 404,
+ *   params: (input: { id: string }) => input,
+ *   message: ({ id }) => `Resource ${id} not found`,
+ * });
+ *
+ * throw NotFound({ id: '42' });
+ * ```
+ */
 export function defineError<Tag extends string, Code extends string>(
   definition: {
     readonly tag: Tag;
@@ -179,6 +195,24 @@ export function defineError(definition: {
   return factory as AnyErrorFactory;
 }
 
+/**
+ * Defines a group of related error factories under a shared namespace.
+ *
+ * @example
+ * ```ts
+ * const UserErrors = defineErrors('User', {
+ *   NotFound: {
+ *     code: 'USER_NOT_FOUND',
+ *     status: 404,
+ *     params: (input: { userId: string }) => input,
+ *     message: ({ userId }) => `User ${userId} not found`,
+ *   },
+ *   Unauthorized: { code: 'USER_UNAUTHORIZED', status: 401 },
+ * });
+ *
+ * throw UserErrors.NotFound({ userId: '42' });
+ * ```
+ */
 export function defineErrors<
   Namespace extends string,
   Defs extends Record<string, {

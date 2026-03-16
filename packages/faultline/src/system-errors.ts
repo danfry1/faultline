@@ -7,6 +7,7 @@ export interface UnexpectedErrorData {
   readonly detail?: unknown;
 }
 
+/** Built-in system error factories for unexpected errors, timeouts, cancellation, serialization failures, and boundary violations. */
 export const SystemErrors = defineErrors('System', {
   Unexpected: {
     code: 'SYSTEM_UNEXPECTED',
@@ -61,6 +62,10 @@ const CombinedFactory = defineError({
     `Combined error with ${data.errors.length} ${data.errors.length === 1 ? 'failure' : 'failures'}`,
 });
 
+/**
+ * Creates a combined error that wraps multiple errors into a single AppError.
+ * Used by `all()` when multiple Results fail.
+ */
 export function combinedError<E extends AppError>(
   errors: readonly E[],
 ): CombinedAppError<E> {
