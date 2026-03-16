@@ -17,6 +17,7 @@
     "cli": "bun run packages/faultline-cli/src/index.ts"
   },
   "devDependencies": {
+    "@types/bun": "^1.3.10",
     "@typescript-eslint/eslint-plugin": "^8.57.0",
     "@typescript-eslint/parser": "^8.57.0",
     "eslint": "^10.0.3",

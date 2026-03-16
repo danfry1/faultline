@@ -168,7 +168,7 @@ export function defineError(definition: {
 
 export function defineErrors<
   Namespace extends string,
-  Defs extends Record<string, ErrorDefinition>,
+  Defs extends Record<string, ErrorDefinition> & { [K in keyof Defs]: Defs[K] extends ErrorDefinitionWithParams<infer I, infer D, infer C> ? ErrorDefinitionWithParams<I, D, C> : ErrorDefinitionWithoutParams },
 >(
   namespace: Namespace,
   definitions: Defs,
@@ -177,7 +177,9 @@ export function defineErrors<
   const tags: string[] = [];
 
   for (const key of Object.keys(definitions)) {
-    const definition = definitions[key]!;
+    const definition = definitions[key];
+    if (!definition) continue;
+
     const tag = `${namespace}.${key}`;
     tags.push(tag);
 

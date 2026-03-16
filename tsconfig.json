@@ -9,6 +9,7 @@
     "noUncheckedIndexedAccess": true,
     "skipLibCheck": true,
     "lib": ["ES2022", "DOM"],
+    "types": ["bun"],
     "paths": {
       "faultline": ["./packages/faultline/src/index.ts"]
     }
