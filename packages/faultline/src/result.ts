@@ -34,7 +34,8 @@ export interface ResultOk<T, E extends AppError = never> {
     tag: Tag,
     handler: (error: Extract<E, { _tag: Tag }>) => Result<U, E2>,
   ): Result<T | U, Exclude<E, { _tag: Tag }> | E2>;
-  match<R>(handlers: MatchHandlers<T, E, R>): R;
+  match<R>(handlers: ExhaustiveMatchHandlers<T, E, R>): R;
+  match<R>(handlers: PartialMatchHandlers<T, E, R>): R;
   tap(fn: (value: T) => void): Result<T, E>;
   tapError(fn: (error: E) => void): Result<T, E>;
   withContext(frame: ContextFrame): Result<T, E>;
@@ -56,7 +57,8 @@ export interface ResultErr<T, E extends AppError> {
     tag: Tag,
     handler: (error: Extract<E, { _tag: Tag }>) => Result<U, E2>,
   ): Result<T | U, Exclude<E, { _tag: Tag }> | E2>;
-  match<R>(handlers: MatchHandlers<T, E, R>): R;
+  match<R>(handlers: ExhaustiveMatchHandlers<T, E, R>): R;
+  match<R>(handlers: PartialMatchHandlers<T, E, R>): R;
   tap(fn: (value: T) => void): Result<T, E>;
   tapError(fn: (error: E) => void): Result<T, E>;
   withContext(frame: ContextFrame): Result<T, E>;
@@ -404,7 +406,7 @@ export class TaskResult<T, E extends AppError = never> {
     options: TaskRunOptions = {},
   ): Promise<R> {
     const result = await this.run(options);
-    return result.match(handlers);
+    return result.match(handlers as ExhaustiveMatchHandlers<T, E, R | Promise<R>>);
   }
 
   tap(fn: (value: T) => void | Promise<void>): TaskResult<T, E> {
@@ -657,7 +659,7 @@ export function match<T, E extends AppError, R>(
   result: Result<T, E>,
   handlers: MatchHandlers<T, E, R>,
 ): R {
-  return result.match(handlers);
+  return result.match(handlers as ExhaustiveMatchHandlers<T, E, R>);
 }
 
 /** Recovers from a specific error tag, returning a new Result. */

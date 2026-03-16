@@ -138,5 +138,13 @@ const matched = err(UserErrors.Unauthorized()).match({
 
 type _matched = Expect<Equal<typeof matched, string>>;
 
+// Partial match with wildcard — should infer R = string
+const partialMatched = err(UserErrors.NotFound({ userId: '1' })).match({
+  ok: (value) => String(value),
+  _: (error) => error.message,
+});
+
+type _partialMatched = Expect<Equal<typeof partialMatched, string>>;
+
 const empty = all([] as const);
 const _emptyAll: Result<readonly [], never> = empty;
