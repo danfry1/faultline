@@ -12,8 +12,36 @@ import type {
 export const ErrorOutput: unique symbol = Symbol.for('faultline.error-output');
 export type ErrorOutputKey = typeof ErrorOutput;
 
+/** Converts CamelCase to SCREAMING_SNAKE_CASE at the type level */
+type CamelToSnake<S extends string, IsFirst extends boolean = true> =
+  S extends `${infer C}${infer Rest}`
+    ? C extends Uppercase<C>
+      ? C extends Lowercase<C>
+        ? `${C}${CamelToSnake<Rest, false>}`
+        : IsFirst extends true
+          ? `${C}${CamelToSnake<Rest, false>}`
+          : `_${C}${CamelToSnake<Rest, false>}`
+      : `${Uppercase<C>}${CamelToSnake<Rest, false>}`
+    : '';
+
+/** Auto-generates a code from namespace + key: User + NotFound → USER_NOT_FOUND */
+type AutoCode<Ns extends string, Key extends string> = `${CamelToSnake<Ns>}_${CamelToSnake<Key>}`;
+
+/** Auto-generates a code from a tag: 'User.NotFound' → 'USER_NOT_FOUND' */
+type TagToCode<Tag extends string> = Tag extends `${infer Ns}.${infer Key}`
+  ? AutoCode<Ns, Key>
+  : CamelToSnake<Tag>;
+
+function camelToScreamingSnake(s: string): string {
+  return s.replace(/([a-z])([A-Z])/g, '$1_$2').toUpperCase();
+}
+
+function autoCodeFromTag(tag: string): string {
+  return tag.split('.').map(camelToScreamingSnake).join('_');
+}
+
 export interface ErrorDefinitionZeroArg<Code extends string = string> {
-  readonly code: Code;
+  readonly code?: Code;
   readonly status?: number;
   readonly message?: string;
 }
@@ -22,7 +50,7 @@ export interface ErrorDefinitionWithData<
   Data,
   Code extends string = string,
 > {
-  readonly code: Code;
+  readonly code?: Code;
   readonly status?: number;
   readonly message: (data: Data) => string;
 }
@@ -48,7 +76,8 @@ export interface ErrorFactory<
 // oxlint-ignore-next-line typescript/no-explicit-any -- widest ErrorFactory type for overload implementation return
 type AnyErrorFactory = ErrorFactory<string, string, any>;
 
-type ExtractCode<D> = D extends { readonly code: infer C extends string } ? C : string;
+type ExtractCode<D, Ns extends string = string, Key extends string = string> =
+  D extends { readonly code: infer C extends string } ? C : AutoCode<Ns, Key>;
 
 type FactoryFromDefinition<
   Tag extends string,
@@ -70,7 +99,7 @@ export type Infer<T extends { readonly [ErrorOutput]: unknown }> = T[ErrorOutput
  * for any X, so this constraint accepts all function signatures.
  */
 type ErrorDefConstraint = {
-  readonly code: string;
+  readonly code?: string;
   readonly status?: number;
   readonly message?: string | ((data: never) => string);
 };
@@ -147,11 +176,24 @@ function renderMessage<Data>(
  * throw NotFound({ id: '42' });
  * ```
  */
+// With explicit code (zero-arg)
 export function defineError<Tag extends string, Code extends string>(
   definition: {
     readonly tag: Tag;
-  } & ErrorDefinitionZeroArg<Code>,
+    readonly code: Code;
+    readonly status?: number;
+    readonly message?: string;
+  },
 ): ErrorFactory<Tag, Code, undefined>;
+// Without code (zero-arg) — auto-generated from tag
+export function defineError<Tag extends string>(
+  definition: {
+    readonly tag: Tag;
+    readonly status?: number;
+    readonly message?: string;
+  },
+): ErrorFactory<Tag, TagToCode<Tag>, undefined>;
+// With explicit code (with data)
 export function defineError<
   Tag extends string,
   Code extends string,
@@ -164,13 +206,25 @@ export function defineError<
     readonly message: (data: Data) => string;
   },
 ): ErrorFactory<Tag, Code, Data>;
+// Without code (with data) — auto-generated from tag
+export function defineError<
+  Tag extends string,
+  Data,
+>(
+  definition: {
+    readonly tag: Tag;
+    readonly status?: number;
+    readonly message: (data: Data) => string;
+  },
+): ErrorFactory<Tag, TagToCode<Tag>, Data>;
 // oxlint-ignore -- typescript/no-explicit-any: overload implementation must accept all data type combinations
 export function defineError(definition: {
   readonly tag: string;
-  readonly code: string;
+  readonly code?: string;
   readonly status?: number;
   readonly message?: string | ((data: any) => string);
-} & ErrorDefinition): AnyErrorFactory {
+}): AnyErrorFactory {
+  const code = definition.code ?? autoCodeFromTag(definition.tag);
   const hasMessageFn = typeof definition.message === 'function';
 
   const factory = (...args: unknown[]) => {
@@ -190,17 +244,17 @@ export function defineError(definition: {
 
     const instance = createAppError({
       tag: definition.tag,
-      code: definition.code,
+      code,
       data,
       status: definition.status,
-      message: renderMessage(definition.message, definition.code, data),
+      message: renderMessage(definition.message, code, data),
       name: definition.tag,
     });
 
     Object.defineProperty(instance, ERROR_FACTORY_META, {
       value: {
         tag: definition.tag,
-        code: definition.code,
+        code,
         ...(definition.status !== undefined ? { status: definition.status } : {}),
       } satisfies ErrorFactoryRuntimeMeta,
       enumerable: false,
@@ -213,7 +267,7 @@ export function defineError(definition: {
 
   attachFactoryMeta(factory, {
     tag: definition.tag,
-    code: definition.code,
+    code,
     ...(definition.status !== undefined ? { status: definition.status } : {}),
   });
 
@@ -226,18 +280,22 @@ export function defineError(definition: {
  *
  * Two forms per definition:
  * - **With data**: annotate the message data param — it becomes the factory input type
- * - **Zero-arg**: just `{ code: '...' }` — factory takes no arguments
+ * - **Zero-arg**: just `{}` or `{ status: 401 }` — factory takes no arguments
+ *
+ * Code is auto-generated as `NAMESPACE_KEY_SCREAMING_SNAKE_CASE` when omitted.
+ * Provide an explicit `code` to override.
  *
  * @example
  * ```ts
  * const UserErrors = defineErrors('User', {
  *   NotFound: {
- *     code: 'USER_NOT_FOUND',
  *     status: 404,
  *     message: (data: { userId: string }) => `User ${data.userId} not found`,
  *   },
- *   Unauthorized: { code: 'USER_UNAUTHORIZED', status: 401 },
+ *   Unauthorized: { status: 401 },
  * });
+ * // UserErrors.NotFound has code 'USER_NOT_FOUND'
+ * // UserErrors.Unauthorized has code 'USER_UNAUTHORIZED'
  *
  * throw UserErrors.NotFound({ userId: '42' });
  * ```
@@ -251,8 +309,8 @@ export function defineErrors<
   definitions: Defs,
 ): ErrorGroup<Namespace, { [K in keyof Defs]:
   Defs[K] extends { readonly message: (data: infer D) => string }
-    ? ErrorDefinitionWithData<D, ExtractCode<Defs[K]>>
-    : ErrorDefinitionZeroArg<ExtractCode<Defs[K]>>
+    ? ErrorDefinitionWithData<D, ExtractCode<Defs[K], Namespace, K & string>>
+    : ErrorDefinitionZeroArg<ExtractCode<Defs[K], Namespace, K & string>>
 }> {
   const group: Record<string, unknown> = {};
   const tags: string[] = [];
@@ -261,11 +319,15 @@ export function defineErrors<
     const tag = `${namespace}.${key}`;
     tags.push(tag);
 
-    // Overload dispatch: definition from Record<string, ...> must be cast to ErrorDefinition union for defineError overloads
+    const code = definition.code ?? autoCodeFromTag(tag);
+
+    // Overload dispatch: definition from Record<string, ...> must be narrowed for defineError overloads;
+    // cast through unknown because spread includes optional code which conflicts with overload resolution
     const factory = defineError({
       ...(definition as ErrorDefinition),
       tag,
-    } as Parameters<typeof defineError>[0]);
+      code,
+    } as unknown as Parameters<typeof defineError>[0]);
 
     group[key] = factory;
   }

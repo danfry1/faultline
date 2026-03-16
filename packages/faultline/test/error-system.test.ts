@@ -28,25 +28,21 @@ import {
 
 const UserErrors = defineErrors('User', {
   NotFound: {
-    code: 'USER_NOT_FOUND',
     status: 404,
     message: (data: { userId: string }) => `User ${data.userId} not found`,
   },
   Unauthorized: {
-    code: 'USER_UNAUTHORIZED',
     status: 401,
   },
 });
 
 const HttpErrors = defineErrors('Http', {
   NotFound: {
-    code: 'HTTP_NOT_FOUND',
     status: 404,
     message: (data: { resource: string; id: string }) =>
       `${data.resource}:${data.id} not found`,
   },
   Forbidden: {
-    code: 'HTTP_FORBIDDEN',
     status: 403,
   },
 });
@@ -75,7 +71,6 @@ describe('error definition', () => {
   test('defineError (single) with message-only works at runtime', () => {
     const CountError = defineError({
       tag: 'Test.Count',
-      code: 'TEST_COUNT',
       message: (data: { count: number }) => `Count: ${data.count}`,
     });
 

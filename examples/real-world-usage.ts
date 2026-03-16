@@ -32,66 +32,54 @@ import {
 
 const UserErrors = defineErrors('User', {
   NotFound: {
-    code: 'USER_NOT_FOUND',
     status: 404,
     message: (data: { userId: string }) => `User ${data.userId} not found`,
   },
   InvalidEmail: {
-    code: 'USER_INVALID_EMAIL',
     status: 400,
     message: (data: { email: string; reason: string }) => `Invalid email: ${data.email}`,
   },
   AlreadyExists: {
-    code: 'USER_ALREADY_EXISTS',
     status: 409,
     message: (data: { email: string }) => `User with email ${data.email} already exists`,
   },
   Unauthorized: {
-    code: 'USER_UNAUTHORIZED',
     status: 401,
   },
 });
 
 const PaymentErrors = defineErrors('Payment', {
   InsufficientFunds: {
-    code: 'PAYMENT_INSUFFICIENT_FUNDS',
     status: 402,
     message: (data: { required: number; available: number }) =>
       `Insufficient funds: need ${data.required}, have ${data.available}`,
   },
   CardDeclined: {
-    code: 'PAYMENT_CARD_DECLINED',
     status: 402,
     message: (data: { last4: string; reason: string }) => `Card ending ${data.last4} declined: ${data.reason}`,
   },
   GatewayTimeout: {
-    code: 'PAYMENT_GATEWAY_TIMEOUT',
     status: 504,
   },
 });
 
 const HttpErrors = defineErrors('Http', {
   BadRequest: {
-    code: 'HTTP_BAD_REQUEST',
     status: 400,
     message: (data: { errors: Array<{ field: string; message: string }> }) => 'Bad request',
   },
   NotFound: {
-    code: 'HTTP_NOT_FOUND',
     status: 404,
     message: (data: { resource: string; id: string }) => `${data.resource} ${data.id} not found`,
   },
   Forbidden: {
-    code: 'HTTP_FORBIDDEN',
     status: 403,
   },
   PaymentRequired: {
-    code: 'HTTP_PAYMENT_REQUIRED',
     status: 402,
     message: (data: { message: string }) => data.message,
   },
   InternalError: {
-    code: 'HTTP_INTERNAL_ERROR',
     status: 500,
   },
 });
@@ -261,11 +249,9 @@ function getUserOrCreateGuest(
 
 const ValidationErrors = defineErrors('Validation', {
   InvalidName: {
-    code: 'VALIDATION_INVALID_NAME',
     message: (data: { name: string; reason: string }) => `Invalid name: ${data.reason}`,
   },
   InvalidAge: {
-    code: 'VALIDATION_INVALID_AGE',
     message: (data: { age: number }) => `Invalid age: ${data.age}. Must be 18-120.`,
   },
 });

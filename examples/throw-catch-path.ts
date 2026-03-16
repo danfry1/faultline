@@ -39,17 +39,14 @@ import {
 // AFTER: 4-6 lines per error, all in one place
 const UserErrors = defineErrors('User', {
   NotFound: {
-    code: 'USER_NOT_FOUND',
     status: 404,
     message: (data: { userId: string }) => `User ${data.userId} not found`,
   },
   InvalidEmail: {
-    code: 'USER_INVALID_EMAIL',
     status: 400,
     message: (data: { email: string }) => `Invalid email: ${data.email}`,
   },
   Unauthorized: {
-    code: 'USER_UNAUTHORIZED',
     status: 401,
   },
 });
@@ -173,7 +170,6 @@ async function typedPromiseExample() {
 
 const PaymentErrors = defineErrors('Payment', {
   Declined: {
-    code: 'PAYMENT_DECLINED',
     status: 402,
     message: (data: { reason: string }) => `Payment declined: ${data.reason}`,
   },

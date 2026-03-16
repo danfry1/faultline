@@ -10,18 +10,15 @@ export interface UnexpectedErrorData {
 /** Built-in system error factories for unexpected errors, timeouts, cancellation, serialization failures, and boundary violations. */
 export const SystemErrors = defineErrors('System', {
   Unexpected: {
-    code: 'SYSTEM_UNEXPECTED',
     message: (data: UnexpectedErrorData) => data.message ?? 'Unexpected error',
   },
   Timeout: {
-    code: 'SYSTEM_TIMEOUT',
     message: (data: { operation?: string; timeoutMs?: number }) =>
       data.operation
         ? `Operation timed out: ${data.operation}`
         : 'Operation timed out',
   },
   Cancelled: {
-    code: 'SYSTEM_CANCELLED',
     message: (data: { operation?: string; reason?: string }) =>
       data.reason
         ? `Operation cancelled: ${data.reason}`
@@ -30,11 +27,9 @@ export const SystemErrors = defineErrors('System', {
           : 'Operation cancelled',
   },
   SerializationFailed: {
-    code: 'SYSTEM_SERIALIZATION_FAILED',
     message: (data: { reason: string }) => `Serialization failed: ${data.reason}`,
   },
   BoundaryViolation: {
-    code: 'SYSTEM_BOUNDARY_VIOLATION',
     message: (data: { boundary: string; fromTag: string; expectedTags?: string[]; message?: string }) =>
       data.message ??
       `Boundary "${data.boundary}" received unhandled error tag "${data.fromTag}"${data.expectedTags ? `. Expected: [${data.expectedTags.join(', ')}]` : ''}`,
@@ -51,7 +46,6 @@ export type CombinedAppError<E extends AppError = AppError> = AppError<
 
 const CombinedFactory = defineError({
   tag: 'System.Combined',
-  code: 'SYSTEM_COMBINED',
   message: (data: { errors: readonly { readonly index: number; readonly error: AppError }[] }) =>
     `Combined error with ${data.errors.length} ${data.errors.length === 1 ? 'failure' : 'failures'}`,
 });

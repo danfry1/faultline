@@ -15,19 +15,16 @@ import {
 
 const UserErrors = defineErrors('User', {
   NotFound: {
-    code: 'USER_NOT_FOUND',
     status: 404,
     message: (data: { userId: string }) => `User ${data.userId} not found`,
   },
   Unauthorized: {
-    code: 'USER_UNAUTHORIZED',
     status: 401,
   },
 });
 
 const PaymentErrors = defineErrors('Payment', {
   Declined: {
-    code: 'PAYMENT_DECLINED',
     status: 402,
     message: (data: { reason: string }) => `Payment declined: ${data.reason}`,
   },

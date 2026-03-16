@@ -9,12 +9,9 @@ import {
 
 const TestErrors = defineErrors('Test', {
   NotFound: {
-    code: 'TEST_NOT_FOUND',
     message: (data: { id: string }) => `Not found: ${data.id}`,
   },
-  Forbidden: {
-    code: 'TEST_FORBIDDEN',
-  },
+  Forbidden: {},
 });
 
 describe('TaskResult.mapErr', () => {

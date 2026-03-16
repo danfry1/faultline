@@ -7,24 +7,20 @@ import {
 
 const DomainErrors = defineErrors('Domain', {
   NotFound: {
-    code: 'DOMAIN_NOT_FOUND',
     status: 404,
     message: (data: { id: string }) => `Not found: ${data.id}`,
   },
   Forbidden: {
-    code: 'DOMAIN_FORBIDDEN',
     status: 403,
   },
 });
 
 const HttpErrors = defineErrors('Http', {
   NotFound: {
-    code: 'HTTP_NOT_FOUND',
     status: 404,
     message: (data: { resource: string }) => `${data.resource} not found`,
   },
   Forbidden: {
-    code: 'HTTP_FORBIDDEN',
     status: 403,
   },
 });
