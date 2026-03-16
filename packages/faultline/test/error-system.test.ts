@@ -429,3 +429,30 @@ describe('match exhaustion', () => {
     }
   });
 });
+
+describe('all() edge cases', () => {
+  test('all([]) returns ok with empty tuple', () => {
+    const result = all([]);
+    expect(isOk(result)).toBe(true);
+    if (isOk(result)) {
+      expect(result.value).toEqual([]);
+    }
+  });
+});
+
+describe('Result toJSON', () => {
+  test('JSON.stringify on ok result produces stable format', () => {
+    const result = ok(42);
+    const json = JSON.parse(JSON.stringify(result));
+    expect(json._type).toBe('ok');
+    expect(json.value).toBe(42);
+  });
+
+  test('JSON.stringify on err result produces stable format', () => {
+    const error = UserErrors.NotFound({ userId: '1' });
+    const result = err(error);
+    const json = JSON.parse(JSON.stringify(result));
+    expect(json._type).toBe('err');
+    expect(json.error._tag).toBe('User.NotFound');
+  });
+});

@@ -1,4 +1,4 @@
-import type { AppError, ContextFrame } from './error';
+import type { AppError, ContextFrame, SerializedAppError } from './error';
 import { combinedError } from './system-errors';
 import { SystemErrors } from './system-errors';
 import { fromUnknown } from './from-unknown';
@@ -41,6 +41,7 @@ export interface ResultOk<T, E extends AppError = never> {
   unwrap(): T;
   unwrapOr<U>(fallback: U): T;
   toTask(): TaskResult<T, E>;
+  toJSON(): { readonly _type: 'ok'; readonly value: T };
 }
 
 export interface ResultErr<T, E extends AppError> {
@@ -62,6 +63,7 @@ export interface ResultErr<T, E extends AppError> {
   unwrap(): never;
   unwrapOr<U>(fallback: U): U;
   toTask(): TaskResult<T, E>;
+  toJSON(): { readonly _type: 'err'; readonly error: SerializedAppError<E['_tag'], E['code'], E['data']> };
 }
 
 export type Result<T, E extends AppError = never> =
@@ -166,6 +168,13 @@ class OkImpl<T, E extends AppError = never> implements ResultOk<T, E> {
   toTask(): TaskResult<T, E> {
     return TaskResult.fromResult(this);
   }
+
+  toJSON() {
+    return {
+      _type: 'ok' as const,
+      value: this.value,
+    };
+  }
 }
 
 class ErrImpl<T, E extends AppError> implements ResultErr<T, E> {
@@ -225,6 +234,13 @@ class ErrImpl<T, E extends AppError> implements ResultErr<T, E> {
 
   toTask(): TaskResult<T, E> {
     return TaskResult.fromResult(this);
+  }
+
+  toJSON() {
+    return {
+      _type: 'err' as const,
+      error: this.error.toJSON(),
+    };
   }
 }
 
