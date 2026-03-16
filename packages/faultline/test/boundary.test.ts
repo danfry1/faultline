@@ -82,7 +82,9 @@ describe('boundary', () => {
       expect(isAppError(e)).toBe(true);
       if (isAppError(e)) {
         expect(e._tag).toBe('System.BoundaryViolation');
-        expect((e.data as any).expectedTags).toBeDefined();
+        expect((e.data as any).expectedTags).toEqual(['Domain.NotFound', 'Domain.Forbidden']);
+        expect((e.data as any).fromTag).toBe('Unknown.Tag');
+        expect((e.data as any).boundary).toBe('domain-to-http');
       }
     }
   });

@@ -77,9 +77,16 @@ describe('redaction', () => {
     for (let i = 0; i < 50; i++) {
       obj = { nested: obj };
     }
-    // Should not stack overflow
+    // Should not stack overflow — verify structure is preserved
     const result = applyRedactions(obj, ['nonexistent']);
-    expect(result).toBeDefined();
+    expect(typeof result).toBe('object');
+    expect(result).not.toBeNull();
+    // Verify the innermost value survived the deep clone
+    let cursor: Record<string, unknown> = result;
+    for (let i = 0; i < 50; i++) {
+      cursor = cursor.nested as Record<string, unknown>;
+    }
+    expect(cursor.value).toBe('deep');
   });
 
   test('wildcard path redacts matching keys in all objects', () => {

@@ -187,6 +187,9 @@ describe('circular reference safety', () => {
     data.self = data;
     const error = TestErrors.NotFound({ id: '1' });
     const json = JSON.stringify(serializeError(error));
-    expect(json).toBeDefined();
+    expect(typeof json).toBe('string');
+    const parsed = JSON.parse(json);
+    expect(parsed._format).toBe('faultline');
+    expect(parsed._tag).toBe('Test.NotFound');
   });
 });
