@@ -311,8 +311,8 @@ describe('boundaries and serialization', () => {
     const serialized = serializeError(custom);
 
     expect(serialized).toMatchObject({
-      kind: 'app-error',
-      version: SERIALIZED_ERROR_FORMAT_VERSION,
+      _format: 'faultline',
+      _version: SERIALIZED_ERROR_FORMAT_VERSION,
       _tag: 'System.Unexpected',
       data: {
         name: 'Unsafe',
@@ -337,7 +337,7 @@ describe('boundaries and serialization', () => {
       _version: 1,
       _type: 'err',
       error: {
-        kind: 'app-error',
+        _format: 'faultline',
         _tag: 'User.Unauthorized',
       },
     });

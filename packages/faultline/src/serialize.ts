@@ -90,18 +90,18 @@ export function deserializeError(
     }));
   }
 
-  if (input.version !== SERIALIZED_ERROR_FORMAT_VERSION) {
+  if (input._version !== SERIALIZED_ERROR_FORMAT_VERSION) {
     return err(SystemErrors.SerializationFailed({
-      reason: `Version mismatch: expected ${SERIALIZED_ERROR_FORMAT_VERSION}, got ${input.version}`,
+      reason: `Version mismatch: expected ${SERIALIZED_ERROR_FORMAT_VERSION}, got ${input._version}`,
     }));
   }
 
   // Recursively deserialize cause if it's a serialized AppError
   let cause: unknown = input.cause;
-  if (cause && typeof cause === 'object' && 'kind' in cause) {
-    // Type narrowing: cause confirmed as non-null object with 'kind' property, cast to SerializedError for kind check
+  if (cause && typeof cause === 'object' && '_format' in cause) {
+    // Type narrowing: cause confirmed as non-null object with '_format' property, cast to SerializedError for format check
     const causeObj = cause as SerializedError;
-    if (causeObj.kind === 'app-error' && isSerializedAppError(causeObj)) {
+    if ('_format' in causeObj && isSerializedAppError(causeObj)) {
       const causeResult = deserializeError(causeObj);
       if (isOk(causeResult)) {
         cause = causeResult.value;

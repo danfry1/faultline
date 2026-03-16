@@ -63,7 +63,7 @@ describe('deserializeError', () => {
   });
 
   test('returns err for wrong version', () => {
-    const result = deserializeError({ kind: 'app-error', version: 999, _tag: 'X', code: 'Y', message: 'Z' } as any);
+    const result = deserializeError({ _format: 'faultline', _version: 999, _tag: 'X', code: 'Y', message: 'Z' } as any);
     expect(isErr(result)).toBe(true);
   });
 

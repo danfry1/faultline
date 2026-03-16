@@ -29,8 +29,8 @@ export interface SerializedAppError<
   Code extends string = string,
   Data = unknown,
 > {
-  readonly kind: 'app-error';
-  readonly version: typeof SERIALIZED_ERROR_FORMAT_VERSION;
+  readonly _format: 'faultline';
+  readonly _version: typeof SERIALIZED_ERROR_FORMAT_VERSION;
   readonly _tag: Tag;
   readonly name: string;
   readonly code: Code;
@@ -150,8 +150,8 @@ export function serializeAppError<
   Data = unknown,
 >(error: AppError<Tag, Code, Data>): SerializedAppError<Tag, Code, Data> {
   const serialized: SerializedAppError<Tag, Code, Data> = {
-    kind: 'app-error',
-    version: SERIALIZED_ERROR_FORMAT_VERSION,
+    _format: 'faultline',
+    _version: SERIALIZED_ERROR_FORMAT_VERSION,
     _tag: error._tag,
     name: error.name,
     code: error.code,
@@ -272,8 +272,8 @@ export function isSerializedAppError(value: unknown): value is SerializedAppErro
   return (
     value !== null &&
     typeof value === 'object' &&
-    obj.kind === 'app-error' &&
-    obj.version === SERIALIZED_ERROR_FORMAT_VERSION &&
+    obj._format === 'faultline' &&
+    obj._version === SERIALIZED_ERROR_FORMAT_VERSION &&
     typeof obj._tag === 'string' &&
     typeof obj.code === 'string' &&
     typeof obj.message === 'string'
