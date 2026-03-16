@@ -35,7 +35,7 @@ const UserErrors = defineErrors('User', {
     code: 'USER_NOT_FOUND',
     status: 404,
     params: (input: { userId: string }) => input,
-    message: ({ userId }) => `User ${userId} not found`,
+    message: (data: { userId: string }) => `User ${data.userId} not found`,
   },
   InvalidEmail: {
     code: 'USER_INVALID_EMAIL',
@@ -44,13 +44,13 @@ const UserErrors = defineErrors('User', {
       email: input.email,
       reason: input.reason ?? 'invalid format',
     }),
-    message: ({ email }) => `Invalid email: ${email}`,
+    message: (data: { email: string; reason: string }) => `Invalid email: ${data.email}`,
   },
   AlreadyExists: {
     code: 'USER_ALREADY_EXISTS',
     status: 409,
     params: (input: { email: string }) => input,
-    message: ({ email }) => `User with email ${email} already exists`,
+    message: (data: { email: string }) => `User with email ${data.email} already exists`,
   },
   Unauthorized: {
     code: 'USER_UNAUTHORIZED',
@@ -63,14 +63,14 @@ const PaymentErrors = defineErrors('Payment', {
     code: 'PAYMENT_INSUFFICIENT_FUNDS',
     status: 402,
     params: (input: { required: number; available: number }) => input,
-    message: ({ required, available }) =>
-      `Insufficient funds: need ${required}, have ${available}`,
+    message: (data: { required: number; available: number }) =>
+      `Insufficient funds: need ${data.required}, have ${data.available}`,
   },
   CardDeclined: {
     code: 'PAYMENT_CARD_DECLINED',
     status: 402,
     params: (input: { last4: string; reason: string }) => input,
-    message: ({ last4, reason }) => `Card ending ${last4} declined: ${reason}`,
+    message: (data: { last4: string; reason: string }) => `Card ending ${data.last4} declined: ${data.reason}`,
   },
   GatewayTimeout: {
     code: 'PAYMENT_GATEWAY_TIMEOUT',
@@ -89,7 +89,7 @@ const HttpErrors = defineErrors('Http', {
     code: 'HTTP_NOT_FOUND',
     status: 404,
     params: (input: { resource: string; id: string }) => input,
-    message: ({ resource, id }) => `${resource} ${id} not found`,
+    message: (data: { resource: string; id: string }) => `${data.resource} ${data.id} not found`,
   },
   Forbidden: {
     code: 'HTTP_FORBIDDEN',
@@ -99,7 +99,7 @@ const HttpErrors = defineErrors('Http', {
     code: 'HTTP_PAYMENT_REQUIRED',
     status: 402,
     params: (input: { message: string }) => input,
-    message: ({ message }) => message,
+    message: (data: { message: string }) => data.message,
   },
   InternalError: {
     code: 'HTTP_INTERNAL_ERROR',
@@ -226,10 +226,10 @@ function handleUpdateResult(userId: string, email: string): string {
 
   // Try removing any handler below — TypeScript will error immediately.
   return match(result, {
-    ok: (user) => `Updated ${user.name}'s email to ${user.email}`,
-    'User.NotFound': (e) => `User ${e.data.userId} does not exist`,
+    ok: (user: User) => `Updated ${user.name}'s email to ${user.email}`,
+    'User.NotFound': (e: Infer<typeof UserErrors.NotFound>) => `User ${e.data.userId} does not exist`,
     'User.Unauthorized': () => `You don't have permission to update this user`,
-    'User.InvalidEmail': (e) => `Bad email "${e.data.email}": ${e.data.reason}`,
+    'User.InvalidEmail': (e: Infer<typeof UserErrors.InvalidEmail>) => `Bad email "${e.data.email}": ${e.data.reason}`,
     //
     // ^ Delete any one of these lines. TypeScript will tell you:
     //   "Property 'User.InvalidEmail' is missing in type..."
@@ -274,12 +274,12 @@ const ValidationErrors = defineErrors('Validation', {
   InvalidName: {
     code: 'VALIDATION_INVALID_NAME',
     params: (input: { name: string; reason: string }) => input,
-    message: ({ reason }) => `Invalid name: ${reason}`,
+    message: (data: { name: string; reason: string }) => `Invalid name: ${data.reason}`,
   },
   InvalidAge: {
     code: 'VALIDATION_INVALID_AGE',
     params: (input: { age: number }) => input,
-    message: ({ age }) => `Invalid age: ${age}. Must be 18-120.`,
+    message: (data: { age: number }) => `Invalid age: ${data.age}. Must be 18-120.`,
   },
 });
 
@@ -427,12 +427,12 @@ function handlePurchase(req: PurchaseRequest) {
   // 4. Transform domain errors → HTTP errors at the boundary
   // result type: Result<User, User.NotFound | User.Unauthorized | Payment.InsufficientFunds>
   return match(result, {
-    ok: (user) => ({
+    ok: (user: User) => ({
       status: 200,
       body: { message: `Charged $${req.amount} to ${user.name}` },
     }),
     // Each handler gets the SPECIFIC error type with full autocomplete:
-    'User.NotFound': (e) => ({
+    'User.NotFound': (e: Infer<typeof UserErrors.NotFound>) => ({
       status: 404,
       body: { message: e.message, userId: e.data.userId },
     }),
@@ -440,7 +440,7 @@ function handlePurchase(req: PurchaseRequest) {
       status: 403,
       body: { message: 'forbidden' },
     }),
-    'Payment.InsufficientFunds': (e) => ({
+    'Payment.InsufficientFunds': (e: Infer<typeof PaymentErrors.InsufficientFunds>) => ({
       status: 402,
       body: {
         message: e.message,
