@@ -64,7 +64,7 @@ describe('error definition', () => {
     const error = UserErrors.Unauthorized();
 
     expect(error._tag).toBe('User.Unauthorized');
-    expect(error.message).toBe('user unauthorized');
+    expect(error.message).toBe('User unauthorized');
     expect(error.data).toBeUndefined();
   });
 

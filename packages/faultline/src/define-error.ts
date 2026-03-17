@@ -42,10 +42,11 @@ function autoCodeFromTag(tag: string): string {
 
 /** Derives a human-readable message from a tag: 'User.NotFound' → 'User not found' */
 function autoMessageFromTag(tag: string): string {
-  return tag
+  const words = tag
     .split('.')
     .map((part) => part.replace(/([a-z])([A-Z])/g, '$1 $2').toLowerCase())
     .join(' ');
+  return words.charAt(0).toUpperCase() + words.slice(1);
 }
 
 export interface ErrorDefinitionZeroArg<Code extends string = string> {
