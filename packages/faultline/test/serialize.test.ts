@@ -122,6 +122,37 @@ describe('deserializeError', () => {
       expect(isAppError(result.value.cause)).toBe(false);
     }
   });
+
+  test('malformed cause in chain is kept as serialized form', () => {
+    // Simulate a cause that looks like a serialized AppError but has wrong version
+    const serialized = {
+      _format: 'faultline' as const,
+      _version: 1 as const,
+      _tag: 'Test.NotFound',
+      name: 'Test.NotFound',
+      code: 'TEST_NOT_FOUND',
+      message: 'Not found: 1',
+      data: { id: '1' },
+      context: [],
+      cause: {
+        _format: 'faultline' as const,
+        _version: 999 as const, // wrong version — deserialization will fail
+        _tag: 'Test.Bad',
+        name: 'Test.Bad',
+        code: 'TEST_BAD',
+        message: 'bad',
+        data: {},
+        context: [],
+      },
+    };
+    const result = deserializeError(serialized);
+    expect(isOk(result)).toBe(true);
+    if (isOk(result)) {
+      // Cause deserialization failed — original serialized form is kept
+      expect(isAppError(result.value.cause)).toBe(false);
+      expect(result.value.cause).toBeDefined();
+    }
+  });
 });
 
 describe('deserializeResult', () => {

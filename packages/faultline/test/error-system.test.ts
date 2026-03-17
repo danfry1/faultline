@@ -68,6 +68,14 @@ describe('error definition', () => {
     expect(error.data).toBeUndefined();
   });
 
+  test('factory with data throws TypeError if no argument provided', () => {
+    expect(() => (UserErrors.NotFound as Function)()).toThrow(TypeError);
+  });
+
+  test('factory without data throws TypeError if argument provided', () => {
+    expect(() => (UserErrors.Unauthorized as Function)({ extra: true })).toThrow(TypeError);
+  });
+
   test('defineError (single) with message-only works at runtime', () => {
     const CountError = defineError({
       tag: 'Test.Count',

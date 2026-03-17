@@ -18,7 +18,7 @@ export const SystemErrors = defineErrors('System', {
   },
   Cancelled: {
     message: (data: { operation?: string; reason?: string }) =>
-      `Operation cancelled${data.reason ? `: ${data.reason}` : data.operation ? `: ${data.operation}` : ''}`,
+      `Operation cancelled${data.reason ?? data.operation ? `: ${data.reason ?? data.operation}` : ''}`,
   },
   SerializationFailed: {
     message: (data: { reason: string }) => `Serialization failed: ${data.reason}`,
@@ -51,6 +51,9 @@ const CombinedFactory = defineError({
 export function combinedError<E extends AppError>(
   errors: readonly { readonly index: number; readonly error: E }[],
 ): CombinedAppError<E> {
+  if (errors.length === 0) {
+    throw new TypeError('combinedError requires at least one error');
+  }
   // Return type narrowing: CombinedFactory produces AppError but we know it's CombinedAppError<E>
   return CombinedFactory({ errors }) as CombinedAppError<E>;
 }

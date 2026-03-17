@@ -145,8 +145,9 @@ export const throwTypeMismatch = createRule({
         if (!declaredTags || declaredTags.length === 0) return;
 
         // Get the tag of the thrown expression
-        const tsThrowExpr = services.esTreeNodeToTSNodeMap.get(node.argument) as ts.Expression;
-        const thrownTag = getThrowTag(checker, tsThrowExpr);
+        const tsThrowExpr = services.esTreeNodeToTSNodeMap.get(node.argument);
+        if (!tsThrowExpr) return;
+        const thrownTag = getThrowTag(checker, tsThrowExpr as ts.Expression);
 
         if (thrownTag) {
           // Known tag — check if it matches declared tags
