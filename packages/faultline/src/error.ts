@@ -1,5 +1,5 @@
 import { getErrorConfig } from './config';
-import { applyRedactions } from './redaction';
+import { applyRedactions, toJsonSafe } from './redaction';
 
 export interface ContextFrame {
   readonly layer?: 'ui' | 'client' | 'service' | 'domain' | 'infra' | 'transport' | (string & {});
@@ -165,7 +165,7 @@ export function serializeAppError<
     name: error.name,
     code: error.code,
     message: error.message,
-    data: error.data,
+    data: toJsonSafe(error.data),
     context: error.context,
     ...(error.status !== undefined ? { status: error.status } : {}),
     ...(error.cause !== undefined

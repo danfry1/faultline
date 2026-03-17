@@ -1,4 +1,50 @@
-// Generic deep-clone: all `as T` casts are safe because each branch reconstructs the same structural type
+/**
+ * Makes any value safe for `JSON.stringify()` — handles circular references,
+ * BigInt, Symbol, undefined, Map, Set, Date, RegExp, and class instances.
+ * Returns a deep clone where all non-JSON-safe values are replaced with
+ * string representations.
+ */
+export function toJsonSafe<T>(value: T): T {
+  return jsonSafeClone(value, new WeakSet<object>());
+}
+
+function jsonSafeClone<T>(value: T, seen: WeakSet<object>): T {
+  if (value === null || value === undefined) return value;
+
+  if (typeof value === 'bigint') return value.toString() as T;
+  if (typeof value === 'symbol') return value.toString() as T;
+  if (typeof value === 'function') return '[Function]' as T;
+  if (typeof value !== 'object') return value;
+
+  if (seen.has(value as object)) return '[Circular]' as T;
+  seen.add(value as object);
+
+  if (value instanceof Date) return value.toISOString() as T;
+  if (value instanceof RegExp) return value.toString() as T;
+  if (value instanceof Map) {
+    const obj: Record<string, unknown> = {};
+    for (const [k, v] of value) obj[String(k)] = jsonSafeClone(v, seen);
+    return obj as T;
+  }
+  if (value instanceof Set) return [...value].map((v) => jsonSafeClone(v, seen)) as T;
+  if (value instanceof Error) return { name: value.name, message: value.message } as T;
+
+  if (Array.isArray(value)) return value.map((item) => jsonSafeClone(item, seen)) as T;
+
+  const proto = Object.getPrototypeOf(value);
+  if (proto !== null && proto !== Object.prototype) {
+    return String(value) as T;
+  }
+
+  const cloned: Record<string, unknown> = {};
+  for (const key of Object.keys(value as Record<string, unknown>)) {
+    cloned[key] = jsonSafeClone((value as Record<string, unknown>)[key], seen);
+  }
+  return cloned as T;
+}
+
+// Generic deep-clone for redaction: preserves types (Date, Map, Set, etc.) since
+// the output is used in memory, not serialized to JSON
 function cloneValue<T>(value: T, seen = new WeakSet<object>()): T {
   if (value === null || typeof value !== 'object') {
     return value;

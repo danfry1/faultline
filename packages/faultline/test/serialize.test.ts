@@ -210,15 +210,40 @@ describe('Result toJSON format', () => {
   });
 });
 
-describe('circular reference safety', () => {
-  test('toJSON handles circular data without crashing', () => {
+describe('JSON safety', () => {
+  test('serializeError handles circular data in AppError', () => {
     const data: Record<string, unknown> = { id: '1' };
     data.self = data;
-    const error = TestErrors.NotFound({ id: '1' });
+    const error = TestErrors.NotFound(data as { id: string });
     const json = JSON.stringify(serializeError(error));
     expect(typeof json).toBe('string');
     const parsed = JSON.parse(json);
     expect(parsed._format).toBe('faultline');
-    expect(parsed._tag).toBe('Test.NotFound');
+    expect(parsed.data.self).toBe('[Circular]');
+  });
+
+  test('serializeError handles BigInt in data', () => {
+    const error = TestErrors.NotFound({ id: BigInt(42) } as unknown as { id: string });
+    const json = JSON.stringify(serializeError(error));
+    expect(typeof json).toBe('string');
+    const parsed = JSON.parse(json);
+    expect(parsed.data.id).toBe('42');
+  });
+
+  test('serializeError handles unknown non-JSON-safe values', () => {
+    const circular: Record<string, unknown> = { x: 1 };
+    circular.self = circular;
+    const json = JSON.stringify(serializeError(circular));
+    expect(typeof json).toBe('string');
+    const parsed = JSON.parse(json);
+    expect(parsed.kind).toBe('cause');
+    expect(parsed.data.self).toBe('[Circular]');
+  });
+
+  test('serializeError handles BigInt as unknown', () => {
+    const json = JSON.stringify(serializeError(BigInt(999)));
+    expect(typeof json).toBe('string');
+    const parsed = JSON.parse(json);
+    expect(parsed.kind).toBe('cause');
   });
 });

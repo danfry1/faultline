@@ -3,6 +3,7 @@ import { describe, expect, test } from 'bun:test';
 import {
   defineErrors,
   isAppError,
+  isErr,
   narrowError,
   isErrorTag,
   typedAsync,
@@ -200,6 +201,36 @@ describe('TaskResult.fromPromise laziness', () => {
     await task.run();
     await task.run();
     expect(callCount).toBe(2);
+  });
+});
+
+describe('AbortError classification', () => {
+  test('unrelated AbortError is NOT classified as cancellation', async () => {
+    const controller = new AbortController();
+    // signal is NOT aborted — a downstream service throws AbortError independently
+    const task = attemptAsync(async () => {
+      throw new DOMException('remote timeout', 'AbortError');
+    });
+    const result = await task.run({ signal: controller.signal });
+    expect(isErr(result)).toBe(true);
+    if (isErr(result)) {
+      // Should be wrapped as Unexpected, NOT Cancelled
+      expect(result.error._tag).toBe('System.Unexpected');
+    }
+  });
+
+  test('actual signal abort IS classified as cancellation', async () => {
+    const controller = new AbortController();
+    controller.abort('stopped');
+    const task = attemptAsync(async () => {
+      await new Promise((r) => setTimeout(r, 100));
+      return 'done';
+    });
+    const result = await task.run({ signal: controller.signal });
+    expect(isErr(result)).toBe(true);
+    if (isErr(result)) {
+      expect(result.error._tag).toBe('System.Cancelled');
+    }
   });
 });
 

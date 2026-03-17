@@ -74,14 +74,16 @@ function createAbortSignalRace(signal: AbortSignal): { promise: Promise<never>; 
 }
 
 function isAbortSignalReason(signal: AbortSignal | undefined, thrown: unknown): boolean {
-  if (!signal) {
+  if (!signal || !signal.aborted) {
     return false;
   }
 
-  if (signal.aborted && thrown === signal.reason) {
+  // Signal is aborted — check if thrown matches the signal's reason
+  if (thrown === signal.reason) {
     return true;
   }
 
+  // Some environments don't set signal.reason but throw a DOMException/Error named 'AbortError'
   if (thrown instanceof DOMException && thrown.name === 'AbortError') {
     return true;
   }

@@ -4,6 +4,7 @@ import {
   isSerializedAppError,
   serializeAppError,
 } from './error';
+import { toJsonSafe } from './redaction';
 import type {
   AppError,
   SerializedError,
@@ -55,7 +56,7 @@ export function serializeError(
   return {
     kind: 'cause',
     message: String(error),
-    data: error,
+    data: toJsonSafe(error),
   };
 }
 

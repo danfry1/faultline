@@ -8,21 +8,28 @@ const createRule = ESLintUtils.RuleCreator(
 type Options = [{ allowAppErrors?: boolean }];
 
 /**
- * Checks if a throw argument is a function call (likely an AppError factory)
- * as opposed to a constructor call (`new Error()`), literal, or variable.
+ * Checks if a throw argument looks like an AppError factory call.
  *
- * AppError factories are call expressions: `UserErrors.NotFound({ id })`
- * Plain errors are new expressions: `new Error('message')`
+ * Allows:
+ * - Member expression calls: `UserErrors.NotFound(...)`, `SystemErrors.Timeout(...)`
+ * - Chained calls: `UserErrors.NotFound(...).withCause(...).withContext(...)`
+ *
+ * Does NOT allow (still flagged):
+ * - Bare function calls: `doSomething()`, `createError()`
+ * - Constructor calls: `new Error(...)`
+ * - Literals, variables, etc.
  */
-function isFactoryCall(argument: TSESTree.Expression): boolean {
-  // Direct call: throw SomeFactory(...)
-  if (argument.type === 'CallExpression') {
-    return true;
-  }
+function isLikelyAppErrorFactory(argument: TSESTree.Expression): boolean {
+  if (argument.type !== 'CallExpression') return false;
 
-  // Chained call: throw SomeFactory(...).withCause(...).withContext(...)
-  // The outermost is a CallExpression whose callee is a MemberExpression
-  // This is already covered by CallExpression check above
+  const callee = argument.callee;
+
+  // Member expression call: UserErrors.NotFound(...) or error.withCause(...)
+  if (callee.type === 'MemberExpression') return true;
+
+  // If callee is itself a call expression, check the inner call (chained)
+  // e.g., throw SomeFactory(...).withCause(...)
+  // The outermost callee would be MemberExpression, already caught above
 
   return false;
 }
@@ -62,7 +69,7 @@ export const noRawThrow = createRule<Options, 'noRawThrow' | 'noRawThrowUseFacto
       ThrowStatement(node) {
         const argument = node.argument;
 
-        if (options.allowAppErrors && argument && isFactoryCall(argument)) {
+        if (options.allowAppErrors && argument && isLikelyAppErrorFactory(argument)) {
           // Factory call (e.g., UserErrors.NotFound(...)) — allowed in allowAppErrors mode
           return;
         }
