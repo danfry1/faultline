@@ -16,7 +16,7 @@ export default tseslint.config(
     },
     rules: {
       'faultline/uncovered-catch': 'error',
-      'faultline/no-raw-throw': 'warn',
+      'faultline/no-raw-throw': ['warn', { allowAppErrors: true }],
     },
   },
 );

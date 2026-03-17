@@ -24,7 +24,7 @@ function walkNode(
   if (!keys) return;
 
   for (const key of keys) {
-    const child = (node as Record<string, unknown>)[key];
+    const child = (node as unknown as Record<string, unknown>)[key];
     if (Array.isArray(child)) {
       for (const item of child) {
         if (item && typeof item === 'object' && 'type' in item) {
@@ -56,10 +56,10 @@ export const uncoveredCatch = createRule({
   defaultOptions: [],
   create(context) {
     let services: ReturnType<typeof ESLintUtils.getParserServices>;
-    let checker: ReturnType<ReturnType<typeof ESLintUtils.getParserServices>['program']['getTypeChecker']>;
+    let checker: import('typescript').TypeChecker;
     try {
       services = ESLintUtils.getParserServices(context);
-      checker = services.program.getTypeChecker();
+      checker = services.program!.getTypeChecker();
     } catch {
       // Type-aware linting not available — skip rule
       return {};
