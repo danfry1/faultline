@@ -32,6 +32,12 @@ const PaymentErrors = defineErrors('Payment', {
   },
 });
 
+const OtherErrors = defineErrors('Other', {
+  Custom: {
+    message: (data: { message: string }) => data.message,
+  },
+});
+
 // ── Functions with typed errors ──
 
 const getUser: (id: string) => TypedPromise<

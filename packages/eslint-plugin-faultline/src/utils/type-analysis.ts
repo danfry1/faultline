@@ -63,24 +63,45 @@ export function extractErrorTagsFromType(
 }
 
 /**
- * Extracts error tags from _output phantom type of an error group/factory.
+ * Finds the ErrorOutput phantom type property on a type.
+ *
+ * The property key is `Symbol.for('faultline.error-output')`. TypeScript represents
+ * well-known Symbol.for() keys as `__@<name>@<id>` internally. We match by checking
+ * if the property name contains the symbol description.
+ *
+ * Also falls back to '_output' for backwards compatibility.
+ */
+function findOutputProperty(type: ts.Type): ts.Symbol | undefined {
+  for (const prop of type.getProperties()) {
+    const name = prop.getName();
+    // Symbol.for('faultline.error-output') is exposed as __@ErrorOutput@<id> by TypeScript
+    // (the variable name, not the symbol description). Also check legacy '_output'.
+    if (name === '_output' || name.startsWith('__@ErrorOutput@')) {
+      return prop;
+    }
+  }
+  return undefined;
+}
+
+/**
+ * Extracts error tags from the ErrorOutput phantom type of an error group/factory.
  */
 export function extractErrorTagsFromOutputType(
   checker: ts.TypeChecker,
   type: ts.Type,
 ): string[] {
-  // Direct _output property (ErrorFactory or ErrorGroup)
-  const outputProp = type.getProperty('_output');
+  // Direct ErrorOutput property (ErrorFactory or ErrorGroup)
+  const outputProp = findOutputProperty(type);
   if (outputProp) {
     const outputType = checker.getTypeOfSymbol(outputProp);
     return extractErrorTagsFromType(checker, outputType);
   }
 
-  // Check if it's an object whose properties have _output (ErrorGroup shape)
+  // Check if it's an object whose properties have ErrorOutput (ErrorGroup shape)
   const tags: string[] = [];
   for (const prop of type.getProperties()) {
     const propType = checker.getTypeOfSymbol(prop);
-    const propOutput = propType.getProperty('_output');
+    const propOutput = findOutputProperty(propType);
     if (propOutput) {
       const outputType = checker.getTypeOfSymbol(propOutput);
       tags.push(...extractErrorTagsFromType(checker, outputType));
