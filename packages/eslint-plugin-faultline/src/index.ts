@@ -1,9 +1,11 @@
 import { uncoveredCatch } from './rules/uncovered-catch';
 import { noRawThrow } from './rules/no-raw-throw';
+import { throwTypeMismatch } from './rules/throw-type-mismatch';
 
 const rules = {
   'uncovered-catch': uncoveredCatch,
   'no-raw-throw': noRawThrow,
+  'throw-type-mismatch': throwTypeMismatch,
 };
 
 /**
@@ -15,7 +17,7 @@ const rules = {
  *   Allows `throw AppError`, warns on `throw new Error()`.
  *
  * - **strict** — Stage 2: Handle errors in catch blocks.
- *   Warns on `throw new Error()` and untyped catch blocks.
+ *   Warns on `throw new Error()`, enforces typed catches, catches throw/type drift.
  *
  * - **all** — Stage 3: Use Result types everywhere.
  *   Errors on ALL throws (use attempt/Result instead) and untyped catches.
@@ -33,14 +35,16 @@ const plugin = {
       rules: {
         'faultline/no-raw-throw': ['warn', { allowAppErrors: true }],
         'faultline/uncovered-catch': 'off',
+        'faultline/throw-type-mismatch': 'off',
       },
     },
-    /** Stage 2: Handle errors in catch blocks with narrowError/isErrorTag */
+    /** Stage 2: Handle errors in catch blocks, catch throw/type drift */
     strict: {
       plugins: { faultline: { rules } },
       rules: {
         'faultline/no-raw-throw': ['warn', { allowAppErrors: true }],
         'faultline/uncovered-catch': 'warn',
+        'faultline/throw-type-mismatch': 'error',
       },
     },
     /** Stage 3: Use Result types everywhere — no throws, full typed handling */
@@ -49,6 +53,7 @@ const plugin = {
       rules: {
         'faultline/no-raw-throw': 'error',
         'faultline/uncovered-catch': 'error',
+        'faultline/throw-type-mismatch': 'error',
       },
     },
   },

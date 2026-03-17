@@ -94,6 +94,18 @@ async function unhandledCheckout(userId: string) {
   }
 }
 
+// ── Rule: throw-type-mismatch (error) ──
+// Detects when a throw statement doesn't match the function's declared error type.
+
+const getUserDrifted: (id: string) => TypedPromise<
+  { id: string; name: string },
+  Infer<typeof UserErrors.NotFound>
+> = async (id) => {
+  // ❌ throw-type-mismatch: throws Other.Custom but function declares User.NotFound
+  if (id === 'missing') throw OtherErrors.Custom({ message: 'something went wrong' });
+  return { id, name: 'Alice' };
+};
+
 // ── GOOD: fully covered — no lint errors ──
 
 async function goodCheckout(userId: string) {
