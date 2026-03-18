@@ -2,6 +2,15 @@ import * as fs from 'node:fs';
 import * as path from 'node:path';
 import * as ts from 'typescript';
 
+/** Mirrors the auto-code generation from the core library (define-error.ts) */
+function camelToScreamingSnake(s: string): string {
+  return s.replace(/([a-z])([A-Z])/g, '$1_$2').toUpperCase();
+}
+
+function autoCodeFromTag(tag: string): string {
+  return tag.split('.').map(camelToScreamingSnake).join('_');
+}
+
 export interface CatalogEntry {
   readonly kind: 'single' | 'group';
   readonly tag: string;
@@ -442,7 +451,8 @@ function collectErrorDefinitions(context: ProjectContext, state: CollectionState
           }
 
           const tag = getStringLiteralValue(getPropertyInitializer(arg, 'tag'));
-          const code = getStringLiteralValue(getPropertyInitializer(arg, 'code'));
+          const code = getStringLiteralValue(getPropertyInitializer(arg, 'code'))
+            ?? (tag ? autoCodeFromTag(tag) : undefined);
           const status = getNumericLiteralValue(getPropertyInitializer(arg, 'status'));
 
           if (!tag || !code) {
@@ -506,17 +516,14 @@ function collectErrorDefinitions(context: ProjectContext, state: CollectionState
                 ? getNumericLiteralValue(statusProp.initializer)
                 : undefined;
 
-            if (!code) {
-              continue;
-            }
-
             const tag = `${namespace}.${memberName}`;
+            const resolvedCode = code ?? autoCodeFromTag(tag);
             tagsByMember.set(memberName, tag);
 
             state.catalog.push({
               kind: 'group',
               tag,
-              code,
+              code: resolvedCode,
               ...(status !== undefined ? { status } : {}),
               sourceFile: relativeFile(context.cwd, sourceFile.fileName),
               variableName,
@@ -771,16 +778,24 @@ function collectLintDiagnostics(context: ProjectContext, state: CollectionState)
     const relative = relativeFile(context.cwd, sourceFile.fileName);
 
     const visit = (node: ts.Node): void => {
-      if (ts.isThrowStatement(node)) {
-        const location = locationForNode(sourceFile, node);
-        state.diagnostics.push({
-          source: 'lint',
-          severity: 'warning',
-          code: 'raw-throw',
-          message: 'Raw throw detected. Prefer typed errors or attempt()/attemptAsync().',
-          sourceFile: relative,
-          ...location,
-        });
+      if (ts.isThrowStatement(node) && node.expression) {
+        // Allow member expression calls: throw UserErrors.NotFound(...)
+        // These are typed error factory calls, not raw throws
+        const expr = node.expression;
+        const isFactoryCall = ts.isCallExpression(expr) &&
+          ts.isPropertyAccessExpression(expr.expression);
+
+        if (!isFactoryCall) {
+          const location = locationForNode(sourceFile, node);
+          state.diagnostics.push({
+            source: 'lint',
+            severity: 'warning',
+            code: 'raw-throw',
+            message: 'Raw throw detected. Prefer typed errors from defineErrors() or wrap with attempt()/attemptAsync().',
+            sourceFile: relative,
+            ...location,
+          });
+        }
       }
 
       if (ts.isCatchClause(node) && node.variableDeclaration) {
