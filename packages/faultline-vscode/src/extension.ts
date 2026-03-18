@@ -181,11 +181,23 @@ function analyzeSingleTryCatch(
       const coveredTags = new Set<string>();
       const sourcesArg = node.arguments[1]!;
 
+      function findOutputProperty(type: ts.Type): ts.Symbol | undefined {
+        for (const prop of type.getProperties()) {
+          const name = prop.getName();
+          // Symbol.for('faultline.error-output') is exposed as __@ErrorOutput@<id> by TypeScript.
+          // Also check legacy '_output' for backwards compatibility.
+          if (name === '_output' || name.startsWith('__@ErrorOutput@')) {
+            return prop;
+          }
+        }
+        return undefined;
+      }
+
       function resolveErrorSource(expr: ts.Expression): void {
         const type = checker.getTypeAtLocation(expr);
 
-        // Check for _output property (ErrorGroup or ErrorFactory)
-        const outputProp = type.getProperty('_output');
+        // Check for ErrorOutput property (ErrorGroup or ErrorFactory)
+        const outputProp = findOutputProperty(type);
         if (outputProp) {
           const outputType = checker.getTypeOfSymbol(outputProp);
           const tags = extractErrorTagsFromType(checker, outputType);
@@ -198,7 +210,7 @@ function analyzeSingleTryCatch(
         // Check individual properties (error group members)
         for (const prop of type.getProperties()) {
           const propType = checker.getTypeOfSymbol(prop);
-          const propOutput = propType.getProperty('_output');
+          const propOutput = findOutputProperty(propType);
           if (propOutput) {
             const tags = extractErrorTagsFromType(checker, checker.getTypeOfSymbol(propOutput));
             for (const tag of tags) {

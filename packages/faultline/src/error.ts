@@ -1,5 +1,5 @@
 import { getErrorConfig } from './config';
-import { applyRedactions, toJsonSafe } from './redaction';
+import { applyRedactions, cloneValue, toJsonSafe } from './redaction';
 
 export interface ContextFrame {
   readonly layer?: 'ui' | 'client' | 'service' | 'domain' | 'infra' | 'transport' | (string & {});
@@ -107,7 +107,7 @@ export interface BoundaryRuntimeMeta {
 function cloneFrame(frame: ContextFrame): ContextFrame {
   return Object.freeze({
     ...frame,
-    ...(frame.meta !== undefined ? { meta: structuredClone(frame.meta) } : {}),
+    ...(frame.meta !== undefined ? { meta: cloneValue(frame.meta) } : {}),
   });
 }
 
@@ -166,7 +166,7 @@ export function serializeAppError<
     code: error.code,
     message: error.message,
     data: toJsonSafe(error.data),
-    context: error.context,
+    context: toJsonSafe(error.context),
     ...(error.status !== undefined ? { status: error.status } : {}),
     ...(error.cause !== undefined
       ? { cause: serializeCauseValue(error.cause) }

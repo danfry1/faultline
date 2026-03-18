@@ -13,9 +13,10 @@ type Options = [{ allowAppErrors?: boolean }];
  * Allows:
  * - Member expression calls: `UserErrors.NotFound(...)`, `SystemErrors.Timeout(...)`
  * - Chained calls: `UserErrors.NotFound(...).withCause(...).withContext(...)`
+ * - PascalCase function calls: `NotFound(...)` (single factories from defineError)
  *
  * Does NOT allow (still flagged):
- * - Bare function calls: `doSomething()`, `createError()`
+ * - Lowercase bare function calls: `doSomething()`, `createError()`
  * - Constructor calls: `new Error(...)`
  * - Literals, variables, etc.
  */
@@ -27,9 +28,8 @@ function isLikelyAppErrorFactory(argument: TSESTree.Expression): boolean {
   // Member expression call: UserErrors.NotFound(...) or error.withCause(...)
   if (callee.type === 'MemberExpression') return true;
 
-  // If callee is itself a call expression, check the inner call (chained)
-  // e.g., throw SomeFactory(...).withCause(...)
-  // The outermost callee would be MemberExpression, already caught above
+  // PascalCase identifier call: NotFound(...) — single factory from defineError
+  if (callee.type === 'Identifier' && /^[A-Z]/.test(callee.name)) return true;
 
   return false;
 }

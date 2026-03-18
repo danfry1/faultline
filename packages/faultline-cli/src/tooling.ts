@@ -779,13 +779,17 @@ function collectLintDiagnostics(context: ProjectContext, state: CollectionState)
 
     const visit = (node: ts.Node): void => {
       if (ts.isThrowStatement(node) && node.expression) {
-        // Allow member expression calls: throw UserErrors.NotFound(...)
-        // These are typed error factory calls, not raw throws
+        // Allow typed error factory calls:
+        // - Member expression calls: throw UserErrors.NotFound(...)
+        // - PascalCase identifier calls: throw NotFound(...) (single factory from defineError)
         const expr = node.expression;
-        const isFactoryCall = ts.isCallExpression(expr) &&
+        const isMemberCall = ts.isCallExpression(expr) &&
           ts.isPropertyAccessExpression(expr.expression);
+        const isPascalCall = ts.isCallExpression(expr) &&
+          ts.isIdentifier(expr.expression) &&
+          /^[A-Z]/.test(expr.expression.text);
 
-        if (!isFactoryCall) {
+        if (!isMemberCall && !isPascalCall) {
           const location = locationForNode(sourceFile, node);
           state.diagnostics.push({
             source: 'lint',

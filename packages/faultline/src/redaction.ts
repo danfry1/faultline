@@ -45,7 +45,8 @@ function jsonSafeClone<T>(value: T, seen: WeakSet<object>): T {
 
 // Generic deep-clone for redaction: preserves types (Date, Map, Set, etc.) since
 // the output is used in memory, not serialized to JSON
-function cloneValue<T>(value: T, seen = new WeakSet<object>()): T {
+/** Deep-clones a value preserving Date, RegExp, Map, Set, and handling circular references. */
+export function cloneValue<T>(value: T, seen = new WeakSet<object>()): T {
   if (value === null || typeof value !== 'object') {
     return value;
   }

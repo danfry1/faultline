@@ -246,4 +246,16 @@ describe('JSON safety', () => {
     const parsed = JSON.parse(json);
     expect(parsed.kind).toBe('cause');
   });
+
+  test('serializeError handles non-JSON-safe values in context.meta', () => {
+    const error = TestErrors.NotFound({ id: '1' }).withContext({
+      operation: 'test',
+      meta: { traceId: BigInt(42), nested: { sym: Symbol('x') } },
+    });
+    const json = JSON.stringify(serializeError(error));
+    expect(typeof json).toBe('string');
+    const parsed = JSON.parse(json);
+    expect(parsed.context[0].meta.traceId).toBe('42');
+    expect(parsed.context[0].meta.nested.sym).toBe('Symbol(x)');
+  });
 });
