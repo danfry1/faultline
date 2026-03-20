@@ -19,11 +19,21 @@
         "types": "./dist/index.d.cts",
         "default": "./dist/index.cjs"
       }
+    },
+    "./test": {
+      "import": {
+        "types": "./dist/test.d.ts",
+        "default": "./dist/test.js"
+      },
+      "require": {
+        "types": "./dist/test.d.cts",
+        "default": "./dist/test.cjs"
+      }
     }
   },
   "files": ["dist", "README.md", "LICENSE", "CHANGELOG.md"],
   "scripts": {
-    "build": "tsdown src/index.ts --format esm,cjs --dts",
+    "build": "tsdown src/index.ts src/test.ts --format esm,cjs --dts",
     "test": "bun test",
     "typecheck": "bunx tsc --noEmit",
     "prepublishOnly": "bun run typecheck && bun run test && bun run build"
