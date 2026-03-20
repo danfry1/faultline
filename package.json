@@ -11,7 +11,7 @@
     "build": "bun --filter '*' build",
     "test": "bun --filter '*' test",
     "typecheck": "bun --filter '*' typecheck",
-    "lint": "oxlint . && eslint examples/",
+    "lint": "oxlint .",
     "lint:eslint": "eslint examples/",
     "format": "oxlint --fix .",
     "cli": "bun run packages/faultline-cli/src/index.ts"

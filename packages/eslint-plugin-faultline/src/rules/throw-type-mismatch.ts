@@ -1,37 +1,10 @@
-import { ESLintUtils, TSESTree } from '@typescript-eslint/utils';
+import { ESLintUtils } from '@typescript-eslint/utils';
 import ts from 'typescript';
-import { extractErrorTagsFromType, extractErrorTagsFromOutputType } from '../utils/type-analysis';
+import { extractErrorTagsFromType } from '../utils/type-analysis';
 
 const createRule = ESLintUtils.RuleCreator(
   (name) => `https://faultline.dev/rules/${name}`,
 );
-
-/**
- * Walk an ESTree subtree using the source code's visitor keys.
- */
-function walkNode(
-  sourceCode: { visitorKeys: Record<string, readonly string[]> },
-  node: TSESTree.Node,
-  callback: (n: TSESTree.Node) => void,
-): void {
-  callback(node);
-
-  const keys = sourceCode.visitorKeys[node.type];
-  if (!keys) return;
-
-  for (const key of keys) {
-    const child = (node as unknown as Record<string, unknown>)[key];
-    if (Array.isArray(child)) {
-      for (const item of child) {
-        if (item && typeof item === 'object' && 'type' in item) {
-          walkNode(sourceCode, item as TSESTree.Node, callback);
-        }
-      }
-    } else if (child && typeof child === 'object' && 'type' in child) {
-      walkNode(sourceCode, child as TSESTree.Node, callback);
-    }
-  }
-}
 
 /**
  * Extracts declared error tags from a function's return type.

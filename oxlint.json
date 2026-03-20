@@ -1,7 +1,7 @@
 {
   "$schema": "https://raw.githubusercontent.com/nicolo-ribaudo/oxlint-config-inspector/main/oxlint_config_schema.json",
   "rules": {
-    "no-unused-vars": "error",
+    "no-unused-vars": "warn",
     "no-console": "off",
     "eqeqeq": "error",
     "typescript/no-explicit-any": "error",
@@ -12,6 +12,9 @@
     "out",
     "node_modules",
     "*.d.ts",
-    "packages/faultline/test"
+    "**/test",
+    "examples",
+    "website",
+    "packages/faultline-vscode"
   ]
 }

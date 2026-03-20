@@ -1,5 +1,4 @@
 import * as vscode from 'vscode';
-import * as path from 'path';
 import * as ts from 'typescript';
 
 // ── Types matching the core library's tooling output ──
@@ -20,11 +19,6 @@ interface CatalogEntry {
   readonly status?: number;
   readonly sourceFile: string;
   readonly namespace?: string;
-}
-
-interface ProjectAnalysis {
-  readonly catalog: readonly CatalogEntry[];
-  readonly diagnostics: readonly ToolingDiagnostic[];
 }
 
 // ── The analyzer: inlined version of the core checks ──

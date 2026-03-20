@@ -857,7 +857,7 @@ function collectLintDiagnostics(context: ProjectContext, state: CollectionState)
  * Given a type like `AppError<'User.NotFound', ...> | AppError<'User.Unauthorized', ...>`,
  * returns `['User.NotFound', 'User.Unauthorized']`.
  */
-function extractErrorTagsFromType(checker: ts.TypeChecker, type: ts.Type): string[] {
+function _extractErrorTagsFromType(checker: ts.TypeChecker, type: ts.Type): string[] {
   const tags: string[] = [];
 
   function visit(t: ts.Type): void {
@@ -902,7 +902,6 @@ function extractErrorTagsFromCallReturnType(
   if (!signature) return [];
 
   const returnType = checker.getReturnTypeOfSignature(signature);
-  const returnTypeStr = checker.typeToString(returnType);
 
   // For TypedPromise<T, E> — the error type E is embedded in the Promise-like type.
   // For Result<T, E> — E is the second type argument.
@@ -1141,7 +1140,6 @@ function collectCheckedCatchDiagnostics(context: ProjectContext, state: Collecti
         }
 
         // Step 5: Find gaps
-        const requiredTags = [...new Set(callTags.map((ct) => ct.tag))];
         const missingTags: Array<{ tag: string; functionName: string }> = [];
 
         for (const { tag, functionName } of callTags) {
