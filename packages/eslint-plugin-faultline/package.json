@@ -2,20 +2,33 @@
   "name": "eslint-plugin-faultline",
   "version": "0.1.0",
   "description": "ESLint rules for type-safe error handling — checks that catch blocks cover all throwable error types.",
-  "main": "dist/index.cjs",
-  "types": "dist/index.d.cts",
+  "main": "dist/index.js",
+  "types": "dist/index.d.ts",
   "exports": {
     ".": {
       "require": {
-        "types": "./dist/index.d.cts",
-        "default": "./dist/index.cjs"
+        "types": "./dist/index.d.ts",
+        "default": "./dist/index.js"
       }
     }
   },
+  "files": ["dist", "README.md", "LICENSE"],
   "scripts": {
     "build": "tsdown src/index.ts --format cjs --dts",
-    "typecheck": "bunx tsc --noEmit"
+    "typecheck": "bunx tsc --noEmit",
+    "prepublishOnly": "bun run typecheck && bun run build"
   },
+  "publishConfig": { "access": "public" },
+  "sideEffects": false,
+  "engines": { "node": ">=18.0.0" },
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/danfry1/faultline.git",
+    "directory": "packages/eslint-plugin-faultline"
+  },
+  "homepage": "https://danfry1.github.io/faultline",
+  "author": "Daniel Fry",
+  "license": "MIT",
   "peerDependencies": {
     "eslint": ">=8.0.0",
     "@typescript-eslint/utils": ">=6.0.0",
