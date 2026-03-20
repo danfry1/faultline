@@ -3,7 +3,7 @@
   "private": true,
   "type": "module",
   "scripts": {
-    "start": "npx tsx src/index.ts",
+    "start": "npx tsx src/index.ts && echo '' && echo '── ESLint faultline rules ──' && npx eslint src/lint-demo.ts || true",
     "lint": "npx eslint src/"
   },
   "dependencies": {
