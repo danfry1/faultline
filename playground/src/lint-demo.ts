@@ -1,11 +1,11 @@
 /**
- * ESLint plugin demo — run "npm run lint" to see faultline's rules in action.
+ * ESLint plugin demo — the terminal below shows faultline's lint rules in action.
  *
- * This file has INTENTIONAL lint violations to demonstrate the plugin.
- * Try fixing them and re-running lint to see the warnings disappear.
+ * This file has INTENTIONAL lint violations. Try fixing them and
+ * running "npm run lint" to see the warnings disappear.
  */
 
-import { defineErrors, type TypedPromise, type Infer } from 'faultline';
+import { defineErrors } from 'faultline';
 
 const UserErrors = defineErrors('User', {
   NotFound: {
@@ -15,30 +15,31 @@ const UserErrors = defineErrors('User', {
   Unauthorized: { status: 401 },
 });
 
-// ─── Rule 1: no-raw-throw ──────────────────────────────────
-// The linter flags raw Error throws and nudges you toward typed factories.
+// ─── ✗ BAD: raw Error throws ───────────────────────────────
+// The linter flags these and tells you to use a typed factory.
 
-async function riskyFunction() {
-  // ⚠ Try running: npm run lint
-  // You'll see: "faultline/no-raw-throw: Use a typed error factory"
+function riskyFunction() {
+  // ⚠ faultline/no-raw-throw
   throw new Error('Something went wrong');
-
-  // Fix: replace with a typed factory
-  // throw UserErrors.NotFound({ userId: '123' });
 }
 
-// ─── Rule 2: throw-type-mismatch ───────────────────────────
-// Catches drift between what a function declares and what it throws.
+function anotherBadThrow(id: string) {
+  // ⚠ faultline/no-raw-throw
+  throw new Error(`User ${id} not found`);
+}
 
-const _getUser: (id: string) => TypedPromise<
-  { id: string; name: string },
-  Infer<typeof UserErrors.NotFound>  // ← declares only NotFound
-> = async (id) => {
-  if (id === 'missing') throw UserErrors.NotFound({ userId: id });
+// ─── ✓ GOOD: typed factory throws ──────────────────────────
+// These are clean — the linter is happy.
 
-  // ✗ This throws Unauthorized but the return type only declares NotFound
-  // eslint will flag: "faultline/throw-type-mismatch"
-  if (id === 'banned') throw UserErrors.Unauthorized();
-
+function getUser(id: string) {
+  if (id === 'missing') {
+    throw UserErrors.NotFound({ userId: id }); // ✓ no warning
+  }
   return { id, name: 'Alice' };
-};
+}
+
+function checkAuth(userId: string) {
+  if (userId === 'banned') {
+    throw UserErrors.Unauthorized(); // ✓ no warning
+  }
+}
