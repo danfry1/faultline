@@ -3,12 +3,16 @@
   "private": true,
   "type": "module",
   "scripts": {
-    "start": "npx tsx src/index.ts"
+    "start": "npx tsx src/index.ts",
+    "lint": "npx eslint src/"
   },
   "dependencies": {
     "faultline": "^0.1.0"
   },
   "devDependencies": {
+    "eslint": "^9.0.0",
+    "eslint-plugin-faultline": "^0.1.0",
+    "@typescript-eslint/parser": "^8.0.0",
     "tsx": "^4.19.0",
     "typescript": "^5.9.0"
   }
