@@ -2,7 +2,6 @@ import { describe, expect, test } from 'bun:test';
 
 import {
   SERIALIZED_ERROR_FORMAT_VERSION,
-  SERIALIZED_RESULT_FORMAT_VERSION,
   SystemErrors,
   TaskResult,
   all,

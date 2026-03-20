@@ -1,4 +1,4 @@
-import { ESLintUtils } from '@typescript-eslint/utils';
+import { ESLintUtils, TSESTree } from '@typescript-eslint/utils';
 import ts from 'typescript';
 import { extractErrorTagsFromType } from '../utils/type-analysis';
 

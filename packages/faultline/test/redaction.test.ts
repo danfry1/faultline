@@ -1,9 +1,6 @@
 import { describe, expect, test, afterEach } from 'bun:test';
 import {
-  configureErrors,
   resetErrorConfig,
-  defineErrors,
-  serializeError,
 } from '../src/index';
 import { applyRedactions } from '../src/redaction';
 

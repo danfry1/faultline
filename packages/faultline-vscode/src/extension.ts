@@ -1,26 +1,6 @@
 import * as vscode from 'vscode';
 import * as ts from 'typescript';
 
-// ── Types matching the core library's tooling output ──
-
-interface ToolingDiagnostic {
-  readonly source: 'lint' | 'doctor';
-  readonly severity: 'warning' | 'error';
-  readonly code: string;
-  readonly message: string;
-  readonly sourceFile: string;
-  readonly line: number;
-  readonly column: number;
-}
-
-interface CatalogEntry {
-  readonly tag: string;
-  readonly code: string;
-  readonly status?: number;
-  readonly sourceFile: string;
-  readonly namespace?: string;
-}
-
 // ── The analyzer: inlined version of the core checks ──
 // We inline the critical checks rather than importing the full tooling.ts
 // to avoid dependency issues in the extension context.

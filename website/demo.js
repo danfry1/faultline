@@ -117,7 +117,6 @@
 
   // ── Animation ──────────────────────────────────────────────────────────────
   var timers = [];
-  var currentAct = -1;
 
   function schedule(callback, ms) {
     timers.push(setTimeout(callback, ms));
@@ -140,8 +139,6 @@
   }
 
   function showAct(actId, captionIndex) {
-    currentAct = captionIndex;
-
     var acts = document.querySelectorAll('.demo-act');
     for (var i = 0; i < acts.length; i++) acts[i].classList.remove('is-active');
 

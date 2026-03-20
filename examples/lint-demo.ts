@@ -74,7 +74,7 @@ async function badCheckout(userId: string) {
   } catch (e) {
     // ❌ uncovered-catch: narrowError only covers UserErrors,
     //    but chargeCard() can throw Payment.Declined
-    const error = narrowError(e, [UserErrors]);
+    const error = narrowError(e, [UserErrors.NotFound]);
     return { status: error.status ?? 500 };
   }
 }
