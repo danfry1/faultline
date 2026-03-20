@@ -1,5 +1,5 @@
 import { describe, expect, test } from 'bun:test';
-import { ok, err, defineErrors, type Infer } from '../src/index';
+import { ok, err, defineErrors, type Infer, type Result } from '../src/index';
 import { expectOk, expectErr, expectErrTag } from '../src/test';
 
 const UserErrors = defineErrors('User', {
@@ -41,22 +41,22 @@ describe('expectErr', () => {
 
 describe('expectErrTag', () => {
   test('returns narrowed error when tag matches', () => {
-    type E = Infer<typeof UserErrors.NotFound> | Infer<typeof UserErrors.Unauthorized>;
-    const result = err<never, E>(UserErrors.NotFound({ userId: '42' }));
+    const error = UserErrors.NotFound({ userId: '42' });
+    const result = err(error) as Result<never, Infer<typeof UserErrors.NotFound> | Infer<typeof UserErrors.Unauthorized>>;
 
-    const error = expectErrTag(result, 'User.NotFound');
+    const narrowed = expectErrTag(result, 'User.NotFound');
     // Type is narrowed — .data.userId is string
-    expect(error.data.userId).toBe('42');
+    expect(narrowed.data.userId).toBe('42');
   });
 
   test('throws when tag does not match', () => {
-    const result = err(UserErrors.Unauthorized());
+    const result = err(UserErrors.Unauthorized()) as Result<never, Infer<typeof UserErrors.NotFound> | Infer<typeof UserErrors.Unauthorized>>;
     expect(() => expectErrTag(result, 'User.NotFound')).toThrow('expectErrTag failed: wrong tag');
     expect(() => expectErrTag(result, 'User.NotFound')).toThrow('User.Unauthorized');
   });
 
   test('throws when result is ok', () => {
-    const result = ok('hello');
+    const result = ok('hello') as Result<string, Infer<typeof UserErrors.NotFound>>;
     expect(() => expectErrTag(result, 'User.NotFound')).toThrow('expectErr failed: got ok');
   });
 });

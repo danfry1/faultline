@@ -57,6 +57,8 @@ export const throwTypeMismatch = createRule({
         'Thrown error "{{thrownTag}}" does not match declared return type which expects [{{declaredTags}}].',
       undeclaredThrow:
         'Function declares TypedPromise error type [{{declaredTags}}] but this throw statement could not be verified. Consider using a typed error factory.',
+      transitiveError:
+        '{{calleeName}}() can throw [{{undeclaredTags}}] which are not declared in this function\'s TypedPromise [{{declaredTags}}]. These errors will propagate silently.',
     },
     schema: [],
   },
@@ -110,6 +112,26 @@ export const throwTypeMismatch = createRule({
       return undefined;
     }
 
+    /**
+     * Extract error tags from the return type of a called function/expression.
+     * Used to detect transitive error propagation through await calls.
+     */
+    function getCalleeErrorTags(callExpr: TSESTree.CallExpression): string[] {
+      const tsCallExpr = services.esTreeNodeToTSNodeMap.get(callExpr);
+      if (!tsCallExpr) return [];
+
+      // Get the callee's type and resolve its call signature
+      const callee = ts.isCallExpression(tsCallExpr) ? tsCallExpr.expression : undefined;
+      if (!callee) return [];
+
+      const calleeType = checker.getTypeAtLocation(callee);
+      const callSigs = calleeType.getCallSignatures();
+      if (callSigs.length === 0) return [];
+
+      const returnType = checker.getReturnTypeOfSignature(callSigs[0]!);
+      return extractErrorTagsFromType(checker, returnType);
+    }
+
     return {
       ThrowStatement(node: TSESTree.ThrowStatement) {
         if (!node.argument) return;
@@ -150,6 +172,46 @@ export const throwTypeMismatch = createRule({
               },
             });
           }
+        }
+      },
+
+      /**
+       * Check await expressions that call functions with TypedPromise return types.
+       * If the callee declares error types not in the enclosing function's TypedPromise,
+       * report them — the errors will propagate silently.
+       */
+      AwaitExpression(node: TSESTree.AwaitExpression) {
+        if (node.argument.type !== 'CallExpression') return;
+
+        const declaredTags = getEnclosingFunctionErrorTags(node);
+        if (!declaredTags || declaredTags.length === 0) return;
+
+        const calleeErrorTags = getCalleeErrorTags(node.argument);
+        if (calleeErrorTags.length === 0) return;
+
+        const undeclaredTags = calleeErrorTags.filter(
+          (tag) => !declaredTags.includes(tag),
+        );
+
+        if (undeclaredTags.length > 0) {
+          // Get a readable name for the callee
+          const callee = node.argument.callee;
+          const calleeName =
+            callee.type === 'Identifier'
+              ? callee.name
+              : callee.type === 'MemberExpression' && callee.property.type === 'Identifier'
+                ? callee.property.name
+                : 'callee';
+
+          context.report({
+            node: node.argument,
+            messageId: 'transitiveError',
+            data: {
+              calleeName,
+              undeclaredTags: undeclaredTags.join(', '),
+              declaredTags: declaredTags.join(', '),
+            },
+          });
         }
       },
     };

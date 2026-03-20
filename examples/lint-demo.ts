@@ -106,6 +106,20 @@ const getUserDrifted: (id: string) => TypedPromise<
   return { id, name: 'Alice' };
 };
 
+// ── Rule: throw-type-mismatch / transitive errors (error) ──
+// Detects when an awaited callee throws errors not declared in the enclosing function.
+
+const getUserLeaky: (id: string) => TypedPromise<
+  { id: string; name: string },
+  Infer<typeof UserErrors.NotFound>
+> = async (id) => {
+  // ❌ throw-type-mismatch (transitive): chargeCard() can throw Payment.Declined
+  //    but getUserLeaky only declares User.NotFound — the error propagates silently
+  await chargeCard(id);
+  if (id === 'missing') throw UserErrors.NotFound({ userId: id });
+  return { id, name: 'Alice' };
+};
+
 // ── GOOD: fully covered — no lint errors ──
 
 async function goodCheckout(userId: string) {
