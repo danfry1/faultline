@@ -1,0 +1,1286 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Documentation — faultline</title>
+  <meta name="description" content="Complete documentation for faultline — the type-safe error system for TypeScript. Installation, usage, Result types, boundaries, and API reference.">
+  <link rel="icon" href="favicon.svg" type="image/svg+xml">
+  <link rel="stylesheet" href="styles.css">
+  <link rel="stylesheet" href="docs.css">
+</head>
+<body>
+
+  <!-- ── Navigation ──────────────────────────────────────── -->
+
+  <nav class="nav">
+    <div class="nav-inner">
+      <a href="index.html" class="nav-brand">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M2 12h4l2-6 3 12 2.5-8 1.5 4h2l2-3h3"/></svg>
+        faultline
+      </a>
+      <button class="nav-hamburger" aria-expanded="false" aria-label="Toggle menu">
+        <span></span>
+        <span></span>
+        <span></span>
+      </button>
+      <ul class="nav-links">
+        <li><a href="docs.html" class="is-active">Docs</a></li>
+        <li><a href="https://github.com/danfry1/faultline" target="_blank" rel="noopener noreferrer">GitHub</a></li>
+      </ul>
+    </div>
+  </nav>
+
+  <!-- ── Mobile drawer ───────────────────────────────────── -->
+
+  <div class="docs-drawer-overlay"></div>
+  <button class="docs-drawer-toggle" aria-label="Toggle sidebar">&#9776;</button>
+
+  <!-- ── Docs layout ─────────────────────────────────────── -->
+
+  <div class="docs-layout">
+
+    <!-- ── Sidebar ─────────────────────────────────────────── -->
+
+    <aside class="docs-sidebar">
+      <nav class="docs-nav">
+
+        <h4>Getting Started</h4>
+        <a href="#installation">Installation</a>
+        <a href="#define-errors">Define Your First Errors</a>
+        <a href="#enable-eslint">Enable ESLint</a>
+
+        <h4 data-stage="1">Stage 1: Throw &amp; Catch</h4>
+        <a href="#throwing">Throwing Errors</a>
+        <a href="#catching-iserrtag">Catching with isErrorTag</a>
+        <a href="#catching-narrow">Catching with narrowError</a>
+        <a href="#logging">Structured Logging</a>
+
+        <h4 data-stage="2">Stage 2: Typed Catches</h4>
+        <a href="#eslint-strict">ESLint Strict Config</a>
+        <a href="#uncovered-catch">Uncovered Catch Detection</a>
+        <a href="#throw-type-drift">Throw/Type Drift Detection</a>
+        <a href="#typed-promise">TypedPromise</a>
+
+        <h4 data-stage="3">Stage 3: Result Types</h4>
+        <a href="#ok-err">Result Types</a>
+        <a href="#imperative">Imperative Style (if/else)</a>
+        <a href="#chaining">Chaining (map / andThen)</a>
+        <a href="#exhaustive-match">Exhaustive Match</a>
+        <a href="#catchtag">catchTag &amp; Recovery</a>
+        <a href="#collecting-errors">Collecting Errors (all)</a>
+
+        <h4>Going Deeper</h4>
+        <a href="#task-result">Async Pipelines (TaskResult)</a>
+        <a href="#boundaries">Error Boundaries</a>
+        <a href="#serialization">Serialization</a>
+        <a href="#context-frames">Context Frames</a>
+        <a href="#configuration">Configuration &amp; Redaction</a>
+        <a href="#system-errors">Built-in System Errors</a>
+
+        <h4>Integrations</h4>
+        <a href="#express-hono-fastify">Express / Hono / Fastify</a>
+        <a href="#testing">Testing Patterns</a>
+
+        <h4>Why Not...</h4>
+        <a href="#tuples">Tuples / ?= Proposal</a>
+        <a href="#comparisons">Comparison with Other Libraries</a>
+
+        <h4>API Reference</h4>
+        <a href="#api-errors">Error Definition</a>
+        <a href="#api-result">Result</a>
+        <a href="#api-task">TaskResult</a>
+        <a href="#api-handling">Error Handling</a>
+        <a href="#api-boundaries">Boundaries</a>
+        <a href="#api-serial">Serialization</a>
+        <a href="#api-config">Configuration</a>
+
+      </nav>
+    </aside>
+
+    <!-- ── Content ─────────────────────────────────────────── -->
+
+    <main class="docs-content">
+
+      <h1>Documentation</h1>
+      <p class="docs-lead">The complete type-safe error system for TypeScript. Start with throw/catch, adopt Result types when you're ready.</p>
+
+      <!-- ────────────────────────────────────────────────────
+           GETTING STARTED
+           ──────────────────────────────────────────────────── -->
+
+      <h2 id="installation">Installation</h2>
+
+      <p>Install the core library and the optional ESLint plugin:</p>
+
+      <div class="code-block" data-line-numbers="false">
+        <button class="code-copy">Copy</button>
+        <code>
+npm install faultline
+npm install -D eslint-plugin-faultline
+        </code>
+      </div>
+
+      <p>The ESLint plugin is recommended but not required. It catches common mistakes like <code>throw new Error(...)</code> and nudges you toward typed factories.</p>
+
+      <!-- ── Define errors ─────────────────────────────────── -->
+
+      <h2 id="define-errors">Define Your First Errors</h2>
+
+      <p class="docs-problem">Hand-rolled error classes are 15+ lines each, inconsistent, and drift out of sync.</p>
+
+      <div class="code-block">
+        <button class="code-copy">Copy</button>
+        <code>
+import { defineErrors } from 'faultline';
+
+const UserErrors = defineErrors('User', {
+  NotFound: {
+    status: 404,
+    message: (data: { userId: string }) => `User ${data.userId} not found`,
+  },
+  InvalidEmail: {
+    status: 400,
+    message: (data: { email: string; reason: string }) => `Invalid email: ${data.email}`,
+  },
+  Unauthorized: { status: 401 },
+});
+        </code>
+      </div>
+
+      <p>Tags and codes are auto-generated from the namespace and key. <code>UserErrors.NotFound(...)._tag</code> is <code>'User.NotFound'</code>, and <code>.code</code> is <code>'USER_NOT_FOUND'</code>. Every error is a real <code>Error</code> instance with a full stack trace, structured data, and JSON serialization built in.</p>
+
+      <!-- ── Enable ESLint ─────────────────────────────────── -->
+
+      <h2 id="enable-eslint">Enable ESLint</h2>
+
+      <div class="code-block">
+        <button class="code-copy">Copy</button>
+        <code>
+// eslint.config.js
+import faultline from 'eslint-plugin-faultline';
+
+export default [
+  faultline.configs.recommended,
+];
+        </code>
+      </div>
+
+      <div class="docs-callout docs-callout-success">
+        <strong>You're set.</strong> Stage 1 is complete. Everything below is optional — adopt it when and if you need it. Or just start writing code. The linter will guide you.
+      </div>
+
+      <!-- ────────────────────────────────────────────────────
+           STAGE 1: THROW & CATCH
+           ──────────────────────────────────────────────────── -->
+
+      <div class="stage-banner stage-banner-1">
+        <span class="stage-banner-num">1</span>
+        <div>
+          <h3 class="stage-banner-title">Throw &amp; Catch</h3>
+          <p class="stage-banner-desc">Define typed errors and throw them like normal. The ESLint plugin guides you.</p>
+        </div>
+      </div>
+
+      <h2 id="throwing">Throwing Errors</h2>
+
+      <p class="docs-problem">Today you throw <code>new Error('...')</code> with no structure. The catch block gets <code>unknown</code>.</p>
+
+      <div class="code-block">
+        <button class="code-copy">Copy</button>
+        <code>
+async function getUser(id: string): Promise<User> {
+  const user = await db.users.findUnique({ where: { id } });
+  if (!user) throw UserErrors.NotFound({ userId: id });
+  return user;
+}
+        </code>
+      </div>
+
+      <p>The thrown error carries a tag (<code>'User.NotFound'</code>), a code (<code>'USER_NOT_FOUND'</code>), an HTTP status (<code>404</code>), typed data (<code>{ userId: string }</code>), and a full stack trace. It's a real <code>Error</code> instance — works with <code>instanceof</code>, <code>console.error</code>, and every tool that expects errors.</p>
+
+      <!-- ── Catching with isErrorTag ──────────────────────── -->
+
+      <h2 id="catching-iserrtag">Catching with isErrorTag</h2>
+
+      <p class="docs-problem">In a catch block, <code>e</code> is <code>unknown</code>. You can't access <code>.data</code> without type assertions.</p>
+
+      <div class="code-block">
+        <button class="code-copy">Copy</button>
+        <code>
+import { isErrorTag } from 'faultline';
+
+try {
+  const user = await getUser(id);
+} catch (e) {
+  // Check a specific error — data is fully typed
+  if (isErrorTag(e, UserErrors.NotFound)) {
+    console.log(e.data.userId); // string
+  }
+}
+        </code>
+      </div>
+
+      <p><code>isErrorTag</code> is a type guard that narrows <code>e</code> from <code>unknown</code> to the specific error type. Inside the <code>if</code> block, <code>e.data.userId</code> is <code>string</code> — no casts, no assertions.</p>
+
+      <!-- ── Catching with narrowError ─────────────────────── -->
+
+      <h2 id="catching-narrow">Catching with narrowError</h2>
+
+      <p class="docs-problem">When multiple error groups might throw, checking each one individually is tedious.</p>
+
+      <div class="code-block">
+        <button class="code-copy">Copy</button>
+        <code>
+catch (e) {
+  const error = narrowError(e, [UserErrors, PaymentErrors]);
+  //    ^? Infer<typeof UserErrors> | Infer<typeof PaymentErrors> | UnexpectedError
+
+  switch (error._tag) {
+    case 'User.NotFound':     return { status: 404 };
+    case 'User.Unauthorized': return { status: 401 };
+    case 'Payment.Declined':  return { status: 402 };
+    default:                  return { status: 500 };
+  }
+}
+        </code>
+      </div>
+
+      <p><code>narrowError</code> takes an <code>unknown</code> caught value and an array of error groups, then narrows it to the union of all error types in those groups. If the caught value doesn't match any group, it wraps it as an <code>UnexpectedError</code> — so the <code>default</code> branch always has a fallback.</p>
+
+      <!-- ── Structured Logging ────────────────────────────── -->
+
+      <h2 id="logging">Structured Logging</h2>
+
+      <p class="docs-problem"><code>String(e)</code> gives you <code>'Error: something went wrong'</code>. Not useful for debugging.</p>
+
+      <div class="code-block">
+        <button class="code-copy">Copy</button>
+        <code>
+import { serializeError } from 'faultline';
+
+const serialized = serializeError(error);
+// {
+//   _format: 'faultline',
+//   _version: 1,
+//   _tag: 'User.NotFound',
+//   code: 'USER_NOT_FOUND',
+//   message: 'User 42 not found',
+//   status: 404,
+//   data: { userId: '42' },
+//   context: [...],
+//   cause: null
+// }
+
+JSON.stringify(serialized); // safe — handles circular refs, BigInt, Symbol
+        </code>
+      </div>
+
+      <p><code>serializeError</code> produces a JSON-safe object with the full error structure — tag, code, data, status, context frames, and cause chains. It handles circular references, <code>BigInt</code>, and <code>Symbol</code> values automatically. You can also call <code>error.toJSON()</code> directly.</p>
+
+      <!-- ────────────────────────────────────────────────────
+           STAGE 2: TYPED CATCHES
+           ──────────────────────────────────────────────────── -->
+
+      <div class="stage-banner stage-banner-2">
+        <span class="stage-banner-num">2</span>
+        <div>
+          <h3 class="stage-banner-title">Typed Catches</h3>
+          <p class="stage-banner-desc">Turn up the ESLint rules. Now the linter ensures your catch blocks are complete.</p>
+        </div>
+      </div>
+
+      <h2 id="eslint-strict">ESLint Strict Config</h2>
+
+      <p class="docs-problem">The recommended config only warns on raw throws. You still need to remember to handle every error type.</p>
+
+      <div class="code-block">
+        <button class="code-copy">Copy</button>
+        <code>
+// eslint.config.js
+import faultline from 'eslint-plugin-faultline';
+
+export default [
+  faultline.configs.strict,
+];
+        </code>
+      </div>
+
+      <p>Switching from <code>recommended</code> to <code>strict</code> adds two powerful rules: <strong>uncovered-catch</strong> (warns when a catch block doesn't handle all throwable error types) and <strong>throw-type-mismatch</strong> (errors when thrown errors don't match the <code>TypedPromise</code> declaration). You're still using <code>throw</code> and <code>catch</code> — but now the tooling ensures your catch blocks are complete.</p>
+
+      <!-- ── Uncovered Catch ───────────────────────────────── -->
+
+      <h2 id="uncovered-catch">Uncovered Catch Detection</h2>
+
+      <p class="docs-problem">A function throws NotFound and Unauthorized, but your catch only handles NotFound. Nothing warns you.</p>
+
+      <div class="code-block">
+        <button class="code-copy">Copy</button>
+        <code>
+try {
+  const user = await getUser(id);       // throws NotFound, Unauthorized
+} catch (e) {
+  if (isErrorTag(e, UserErrors.NotFound)) {
+    return { status: 404 };
+  }
+  // ⚠ faultline/uncovered-catch:
+  //   Unauthorized is throwable but not handled
+}
+        </code>
+      </div>
+
+      <p>The <code>uncovered-catch</code> rule analyzes which errors each function can throw and verifies that your catch block handles all of them. When you add a new error type to a function, the linter tells you every catch block that needs updating.</p>
+
+      <!-- ── Throw/Type Drift ──────────────────────────────── -->
+
+      <h2 id="throw-type-drift">Throw/Type Drift Detection</h2>
+
+      <p class="docs-problem">You declare a TypedPromise with certain error types but the function body throws different ones. They drift apart silently.</p>
+
+      <div class="code-block">
+        <button class="code-copy">Copy</button>
+        <code>
+import type { TypedPromise, Infer } from 'faultline';
+
+// Declares only NotFound...
+async function getUser(id: string): TypedPromise<User, Infer<typeof UserErrors.NotFound>> {
+  const user = await db.get(id);
+  if (!user) throw UserErrors.NotFound({ userId: id });
+  if (!user.active) throw UserErrors.Unauthorized();
+  //                      ⚠ faultline/throw-type-mismatch:
+  //                        Unauthorized thrown but not declared in TypedPromise
+  return user;
+}
+        </code>
+      </div>
+
+      <p>The <code>throw-type-mismatch</code> rule catches drift between what a function declares it can throw and what it actually throws. If you add a new throw statement, the linter flags it until you update the type annotation.</p>
+
+      <!-- ── TypedPromise ──────────────────────────────────── -->
+
+      <h2 id="typed-promise">TypedPromise</h2>
+
+      <p class="docs-problem">Async functions always return <code>Promise&lt;T&gt;</code> — TypeScript doesn't let you declare what they throw.</p>
+
+      <div class="code-block">
+        <button class="code-copy">Copy</button>
+        <code>
+import type { TypedPromise, Infer } from 'faultline';
+
+async function getUser(
+  id: string,
+): TypedPromise<User, Infer<typeof UserErrors.NotFound> | Infer<typeof UserErrors.Unauthorized>> {
+  const user = await db.get(id);
+  if (!user) throw UserErrors.NotFound({ userId: id });
+  if (!user.active) throw UserErrors.Unauthorized();
+  return user;
+}
+
+// The .catch() handler receives the typed error union
+const user = await getUser('42').catch((e) => {
+  // e: Infer<typeof UserErrors.NotFound> | Infer<typeof UserErrors.Unauthorized>
+});
+        </code>
+      </div>
+
+      <p><code>TypedPromise&lt;T, E&gt;</code> is a zero-cost type annotation — it's just <code>Promise&lt;T&gt;</code> at runtime. But at the type level, it gives <code>.catch()</code> a typed error parameter instead of <code>any</code>. Combined with the <code>throw-type-mismatch</code> rule, you get compile-time and lint-time safety for thrown errors.</p>
+
+      <!-- ────────────────────────────────────────────────────
+           STAGE 3: RESULT TYPES
+           ──────────────────────────────────────────────────── -->
+
+      <div class="stage-banner stage-banner-3">
+        <span class="stage-banner-num">3</span>
+        <div>
+          <h3 class="stage-banner-title">Result Types</h3>
+          <p class="stage-banner-desc">Return Results instead of throwing. The compiler tracks every possible error.</p>
+        </div>
+      </div>
+
+      <h2 id="ok-err">Result Types</h2>
+
+      <p>For code where you want the compiler to track every possible error — no exceptions, no <code>unknown</code> — use <code>Result&lt;T, E&gt;</code>. You can use them imperatively with if/else or with method chaining.</p>
+
+      <div class="code-block">
+        <button class="code-copy">Copy</button>
+        <code>
+import { ok, err, isOk, isErr, type Result, type Infer } from 'faultline';
+
+function getUser(id: string): Result<User, Infer<typeof UserErrors.NotFound>> {
+  const user = db.get(id);
+  if (!user) return err(UserErrors.NotFound({ userId: id }));
+  return ok(user);
+}
+        </code>
+      </div>
+
+      <p><code>Result&lt;T, E&gt;</code> is a discriminated union on <code>_type: 'ok' | 'err'</code>. Use <code>isOk(result)</code> and <code>isErr(result)</code> to narrow it. The error type is carried in the return type — the caller always knows exactly what can fail.</p>
+
+      <!-- ── Imperative Style ──────────────────────────────── -->
+
+      <h3 id="imperative">Imperative Style (if/else)</h3>
+
+      <div class="code-block">
+        <button class="code-copy">Copy</button>
+        <code>
+const result = getUser(id);
+
+if (isErr(result)) {
+  result.error._tag;        // 'User.NotFound' — literal type
+  result.error.data.userId; // string — fully typed
+  result.error.status;      // 404
+  return;
+}
+
+// TypeScript knows this is ok — result.value is User
+const user = result.value;
+        </code>
+      </div>
+
+      <p>Compose multiple Results with early returns:</p>
+
+      <div class="code-block">
+        <button class="code-copy">Copy</button>
+        <code>
+function updateUserEmail(userId: string, newEmail: string) {
+  const userResult = getUser(userId);
+  if (isErr(userResult)) return userResult;
+
+  const emailResult = validateEmail(newEmail);
+  if (isErr(emailResult)) return emailResult;
+
+  return ok({ ...userResult.value, email: emailResult.value });
+  // Return type: Result<User, User.NotFound | User.InvalidEmail>
+}
+        </code>
+      </div>
+
+      <p>No paradigm shift required. This is just normal imperative code with typed errors instead of <code>unknown</code>. The return type automatically accumulates all possible failures.</p>
+
+      <!-- ── Chaining ──────────────────────────────────────── -->
+
+      <h3 id="chaining">Chaining (map / andThen)</h3>
+
+      <div class="code-block">
+        <button class="code-copy">Copy</button>
+        <code>
+const result = getUser(userId)
+  .andThen(user => validateEmail(newEmail).map(email => ({ ...user, email })));
+// Result<User, User.NotFound | User.InvalidEmail>
+        </code>
+      </div>
+
+      <p>Errors accumulate in the type automatically. Each <code>.andThen()</code> adds its failure modes to the union. <code>.map()</code> transforms the success value without affecting the error type. Both short-circuit on the first error — later steps don't run.</p>
+
+      <!-- ── Exhaustive Match ──────────────────────────────── -->
+
+      <h3 id="exhaustive-match">Exhaustive Match</h3>
+
+      <div class="code-block">
+        <button class="code-copy">Copy</button>
+        <code>
+import { match } from 'faultline';
+
+match(result, {
+  ok: (user) => `Updated ${user.name}`,
+  'User.NotFound': (e) => `No user ${e.data.userId}`,
+  'User.InvalidEmail': (e) => `Bad email: ${e.data.reason}`,
+});
+        </code>
+      </div>
+
+      <p>Remove a handler and you get a compile error. Each handler receives the specific error type with full autocomplete on <code>.data</code>. Add a <code>_</code> handler for a wildcard fallback when you don't need exhaustive coverage.</p>
+
+      <!-- ── catchTag ──────────────────────────────────────── -->
+
+      <h3 id="catchtag">catchTag &amp; Recovery</h3>
+
+      <div class="code-block">
+        <button class="code-copy">Copy</button>
+        <code>
+getUser(userId)
+  .catchTag('User.NotFound', (e) => ok({ id: e.data.userId, name: 'Guest', email: '' }));
+// Result<User, User.Unauthorized>
+// NotFound is gone from the type — handled. Only Unauthorized remains.
+        </code>
+      </div>
+
+      <p><code>.catchTag()</code> handles one specific error tag and removes it from the Result's error type. The handler receives the narrowed error and must return a new <code>ok()</code> value. Remaining unhandled errors stay in the type.</p>
+
+      <!-- ── Collecting Errors ─────────────────────────────── -->
+
+      <h3 id="collecting-errors">Collecting Errors (all)</h3>
+
+      <div class="code-block">
+        <button class="code-copy">Copy</button>
+        <code>
+const result = all([
+  validateName(input.name),
+  validateEmail(input.email),
+  validateAge(input.age),
+] as const);
+// Ok → typed tuple [string, string, number]
+// Err → System.Combined containing ALL validation errors
+        </code>
+      </div>
+
+      <p><code>all()</code> collects an array of Results. If all succeed, you get a typed tuple of all success values. If any fail, you get a <code>System.Combined</code> error containing every failure — not just the first one. This is especially useful for validation where you want to report all problems at once.</p>
+
+      <!-- ────────────────────────────────────────────────────
+           GOING DEEPER
+           ──────────────────────────────────────────────────── -->
+
+      <div class="stage-banner stage-banner-deep">
+        <div>
+          <h3 class="stage-banner-title">Going Deeper</h3>
+          <p class="stage-banner-desc">Advanced patterns available at any stage. Use what you need.</p>
+        </div>
+      </div>
+
+      <h2 id="task-result">Async Pipelines (TaskResult)</h2>
+
+      <p><code>attemptAsync</code> wraps promise-based code as a <code>TaskResult</code> — a lazy async computation that runs on <code>.run()</code>:</p>
+
+      <div class="code-block">
+        <button class="code-copy">Copy</button>
+        <code>
+import { attemptAsync } from 'faultline';
+
+const task = attemptAsync(
+  async (signal) => {
+    const res = await fetch(`/api/users/${id}`, { signal });
+    if (!res.ok) throw new Error(`HTTP ${res.status}`);
+    return res.json() as Promise<User>;
+  },
+  { mapUnknown: (thrown) => UserErrors.NotFound({ userId: id }) },
+);
+// TaskResult<User, User.NotFound | System.Cancelled>
+
+const result = await task
+  .map(user => user.name)
+  .withContext({ layer: 'service', operation: 'getUser' })
+  .run({ signal: controller.signal });
+        </code>
+      </div>
+
+      <p><code>attempt</code> does the same for synchronous code:</p>
+
+      <div class="code-block">
+        <button class="code-copy">Copy</button>
+        <code>
+const result = attempt(() => JSON.parse(raw));
+// Result<unknown, System.Unexpected>
+        </code>
+      </div>
+
+      <p>TaskResult is lazy — nothing runs until <code>.run()</code>. It supports <code>AbortSignal</code> for cancellation, and <code>.map()</code>, <code>.andThen()</code>, <code>.catchTag()</code>, and <code>.withContext()</code> all work the same as on Result.</p>
+
+      <!-- ── Error Boundaries ──────────────────────────────── -->
+
+      <h2 id="boundaries">Error Boundaries</h2>
+
+      <p>Map domain errors to HTTP errors (or any other layer) with <code>defineBoundary</code>. The mapping is exhaustive — add a new domain error and the compiler tells you to add a handler.</p>
+
+      <div class="code-block">
+        <button class="code-copy">Copy</button>
+        <code>
+import { defineBoundary, defineErrors } from 'faultline';
+
+const HttpErrors = defineErrors('Http', {
+  NotFound: {
+    status: 404,
+    message: (data: { resource: string; id: string }) =>
+      `${data.resource} ${data.id} not found`,
+  },
+  BadRequest: {
+    status: 400,
+    message: (data: { errors: { field: string; message: string }[] }) =>
+      'Bad request',
+  },
+  Forbidden: { status: 403 },
+});
+
+const userToHttp = defineBoundary({
+  name: 'user-to-http',
+  from: UserErrors,
+  map: {
+    'User.NotFound': (e) =>
+      HttpErrors.NotFound({ resource: 'user', id: e.data.userId }),
+    'User.InvalidEmail': (e) =>
+      HttpErrors.BadRequest({
+        errors: [{ field: 'email', message: e.data.reason }],
+      }),
+    'User.Unauthorized': () => HttpErrors.Forbidden(),
+  },
+});
+
+const httpError = userToHttp(domainError);
+// Original error preserved as .cause, boundary context auto-added
+        </code>
+      </div>
+
+      <p>The original error is preserved as <code>.cause</code> on the new error, and a boundary context frame is automatically added. Add a new variant to <code>UserErrors</code> and the compiler immediately flags the missing handler in <code>map</code>.</p>
+
+      <!-- ── Serialization ─────────────────────────────────── -->
+
+      <h2 id="serialization">Serialization &amp; Deserialization</h2>
+
+      <div class="code-block">
+        <button class="code-copy">Copy</button>
+        <code>
+import { serializeError, deserializeError } from 'faultline';
+
+const serialized = serializeError(error);
+// { _format: 'faultline', _version: 1, _tag: 'User.NotFound', code: 'USER_NOT_FOUND', ... }
+
+JSON.stringify(serialized); // safe — handles circular refs, BigInt, Symbol, etc.
+
+const restored = deserializeError(serialized);
+// Full AppError with tag, data, context, cause chain
+        </code>
+      </div>
+
+      <p>Errors round-trip through JSON with full fidelity — tag, code, data, context, and cause chains are all preserved. The serialized format is versioned and JSON-safe, handling edge cases like circular references, <code>BigInt</code>, and <code>Symbol</code> values automatically.</p>
+
+      <!-- ── Context Frames ────────────────────────────────── -->
+
+      <h2 id="context-frames">Context Frames</h2>
+
+      <p>Add structured context to any error for observability:</p>
+
+      <div class="code-block">
+        <button class="code-copy">Copy</button>
+        <code>
+error.withContext({
+  layer: 'service',      // 'ui' | 'client' | 'service' | 'domain' | 'infra' | 'transport'
+  operation: 'getUser',
+  component: 'UserService',
+  requestId: 'req-abc-123',
+  traceId: 'trace-xyz',
+  meta: { userId: '42' },
+});
+        </code>
+      </div>
+
+      <p>Context frames are preserved through boundaries, serialization, and cause chains. Each frame records where and why an error was observed, making it easy to trace errors through layered architectures. All fields are optional — use only what you need.</p>
+
+      <!-- ── Configuration ─────────────────────────────────── -->
+
+      <h2 id="configuration">Configuration &amp; Redaction</h2>
+
+      <div class="code-block">
+        <button class="code-copy">Copy</button>
+        <code>
+import { configureErrors } from 'faultline';
+
+configureErrors({
+  captureStack: false, // disable in production for performance
+  redactPaths: [
+    'data.password',
+    'data.token',
+    'context.*.meta.apiKey', // wildcards supported
+  ],
+});
+// serializeError() now replaces matched paths with '[REDACTED]'
+        </code>
+      </div>
+
+      <p>Stack capture defaults to <code>true</code> in development and <code>false</code> when <code>NODE_ENV=production</code>. Redaction paths support wildcards and are applied during serialization — the original error data is never mutated.</p>
+
+      <!-- ── System Errors ─────────────────────────────────── -->
+
+      <h2 id="system-errors">Built-in System Errors</h2>
+
+      <p>Faultline ships with a set of system-level error factories for common infrastructure concerns:</p>
+
+      <div class="docs-table-wrap">
+        <table>
+          <thead>
+            <tr>
+              <th>Factory</th>
+              <th>Tag</th>
+              <th>Use case</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr>
+              <td><code>SystemErrors.Unexpected</code></td>
+              <td><code>System.Unexpected</code></td>
+              <td>Wrapped unknown throws</td>
+            </tr>
+            <tr>
+              <td><code>SystemErrors.Timeout</code></td>
+              <td><code>System.Timeout</code></td>
+              <td>Operation timeouts</td>
+            </tr>
+            <tr>
+              <td><code>SystemErrors.Cancelled</code></td>
+              <td><code>System.Cancelled</code></td>
+              <td>AbortSignal cancellations</td>
+            </tr>
+            <tr>
+              <td><code>SystemErrors.SerializationFailed</code></td>
+              <td><code>System.SerializationFailed</code></td>
+              <td>Serialization failures</td>
+            </tr>
+            <tr>
+              <td><code>SystemErrors.BoundaryViolation</code></td>
+              <td><code>System.BoundaryViolation</code></td>
+              <td>Unmapped boundary errors</td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+
+      <p><code>System.Combined</code> is produced by <code>all()</code> when multiple Results fail — it contains an array of all individual errors.</p>
+
+      <!-- ────────────────────────────────────────────────────
+           INTEGRATIONS
+           ──────────────────────────────────────────────────── -->
+
+      <h2 id="express-hono-fastify">Express / Hono / Fastify</h2>
+
+      <p>Drop one of these error handlers into your framework and all faultline errors get structured JSON responses.</p>
+
+      <h3>Express</h3>
+
+      <div class="code-block">
+        <button class="code-copy">Copy</button>
+        <code>
+app.use((err, req, res, next) => {
+  if (isAppError(err)) {
+    res.status(err.status ?? 500).json({ error: err.code, message: err.message });
+    return;
+  }
+  res.status(500).json({ error: 'INTERNAL_ERROR' });
+});
+        </code>
+      </div>
+
+      <h3>Hono</h3>
+
+      <div class="code-block">
+        <button class="code-copy">Copy</button>
+        <code>
+app.onError((err, c) => {
+  if (isAppError(err)) {
+    return c.json({ error: err.code, message: err.message }, err.status ?? 500);
+  }
+  return c.json({ error: 'INTERNAL_ERROR' }, 500);
+});
+        </code>
+      </div>
+
+      <h3>Fastify</h3>
+
+      <div class="code-block">
+        <button class="code-copy">Copy</button>
+        <code>
+fastify.setErrorHandler((err, request, reply) => {
+  if (isAppError(err)) {
+    reply.status(err.status ?? 500).send({ error: err.code, message: err.message });
+    return;
+  }
+  reply.status(500).send({ error: 'INTERNAL_ERROR' });
+});
+        </code>
+      </div>
+
+      <!-- ── Testing ───────────────────────────────────────── -->
+
+      <h2 id="testing">Testing Patterns</h2>
+
+      <p>Assert on specific error tags and typed data in your tests:</p>
+
+      <div class="code-block">
+        <button class="code-copy">Copy</button>
+        <code>
+test('returns NotFound for missing user', () => {
+  const result = getUser('nonexistent');
+  expect(isErr(result)).toBe(true);
+  if (isErr(result)) {
+    expect(isErrTag(result, 'User.NotFound')).toBe(true);
+    expect(result.error.data.userId).toBe('nonexistent');
+  }
+});
+        </code>
+      </div>
+
+      <p>Because errors carry typed data, your test assertions can check specific fields without casting. <code>isErrTag</code> narrows the error type so <code>result.error.data</code> is fully typed inside the <code>if</code> block.</p>
+
+      <!-- ────────────────────────────────────────────────────
+           WHY NOT...
+           ──────────────────────────────────────────────────── -->
+
+      <h2 id="tuples">Tuples / ?= Proposal</h2>
+
+      <p>You may have seen the TC39 <a href="https://github.com/nicolo-ribaudo/tc39-proposal-safe-assignment-operator" target="_blank" rel="noopener noreferrer">Safe Assignment Operator (<code>?=</code>) proposal</a> or libraries that return <code>[error, value]</code> tuples:</p>
+
+      <div class="code-block">
+        <button class="code-copy">Copy</button>
+        <code>
+const [err, user] = safeTry(() => getUser(id));
+        </code>
+      </div>
+
+      <p>We considered this but chose discriminated unions (<code>result._type</code>) for three reasons:</p>
+
+      <ol>
+        <li><strong>TypeScript narrows discriminated unions more reliably than tuple truthiness.</strong> After <code>if (isErr(result))</code>, the compiler <em>guarantees</em> <code>result.error</code> is typed. With <code>if (err)</code>, you're relying on truthiness narrowing — which works but is a weaker contract and easier to get backwards.</li>
+        <li><strong>The <code>?=</code> proposal doesn't type the error.</strong> It's sugar for try/catch — <code>err</code> is still <code>unknown</code>. Faultline's value is that errors carry typed data, tags, and codes. Even if <code>?=</code> lands, you'd still want faultline underneath.</li>
+        <li><strong>A single <code>result</code> value composes better.</strong> You can pass it to <code>match()</code>, return it from functions, or chain methods on it. Two separate variables can't do that.</li>
+      </ol>
+
+      <p>If you prefer the tuple syntax, a one-line helper gets you there — and your errors stay fully typed:</p>
+
+      <div class="code-block">
+        <button class="code-copy">Copy</button>
+        <code>
+function tryResult<T, E extends AppError>(
+  result: Result<T, E>,
+): [E, undefined] | [undefined, T] {
+  return isErr(result) ? [result.error, undefined] : [undefined, result.value];
+}
+
+const [err, user] = tryResult(getUser(id));
+if (err) {
+  err.data.userId; // still typed
+  return;
+}
+user.name; // still typed
+        </code>
+      </div>
+
+      <!-- ── Comparisons ───────────────────────────────────── -->
+
+      <h2 id="comparisons">Comparison with Other Libraries</h2>
+
+      <p>Most TypeScript error libraries ask you to adopt a new paradigm across your entire codebase before you see any benefit. Faultline is the only one designed for incremental adoption — start with throw/catch and go further when you're ready.</p>
+
+      <h3>vs. hand-rolled error classes</h3>
+
+      <p>The status quo. You write a class per error, each with its own shape, and hope they stay consistent.</p>
+
+      <div class="code-compare">
+        <div class="code-compare-panel">
+          <span class="code-compare-label">Hand-rolled</span>
+          <div class="code-block"><code>
+class UserNotFoundError extends Error {
+  readonly code = 'USER_NOT_FOUND';
+  readonly status = 404;
+  constructor(public readonly userId: string) {
+    super(`User ${userId} not found`);
+    this.name = 'UserNotFoundError';
+  }
+}
+// repeat for every error type...
+          </code></div>
+        </div>
+        <div class="code-compare-panel">
+          <span class="code-compare-label code-compare-label--fl">faultline</span>
+          <div class="code-block"><code>
+const UserErrors = defineErrors('User', {
+  NotFound: {
+    status: 404,
+    message: (data: { userId: string }) =>
+      `User ${data.userId} not found`,
+  },
+});
+// tag, code, status, typed data — done
+          </code></div>
+        </div>
+      </div>
+
+      <p>Faultline replaces the boilerplate and adds ESLint rules, structured serialization, and typed catch blocks. You get more with less code.</p>
+
+      <h3>vs. neverthrow</h3>
+
+      <p>neverthrow is a solid Result type library. Its strength is a clean <code>Result</code> API with good TypeScript inference. The key difference: neverthrow requires you to use Result types everywhere from day one. Faultline lets you start with throw/catch.</p>
+
+      <div class="code-compare">
+        <div class="code-compare-panel">
+          <span class="code-compare-label">neverthrow</span>
+          <div class="code-block"><code>
+import { ok, err, ResultAsync } from 'neverthrow';
+
+// You still hand-roll the error class
+class UserNotFoundError extends Error {
+  constructor(public userId: string) { ... }
+}
+
+// Must return ResultAsync — can't use throw
+function getUser(id: string): ResultAsync<User, UserNotFoundError> {
+  ...
+}
+          </code></div>
+        </div>
+        <div class="code-compare-panel">
+          <span class="code-compare-label code-compare-label--fl">faultline — Stage 1</span>
+          <div class="code-block"><code>
+import { defineErrors } from 'faultline';
+
+// Error definition does it all
+const UserErrors = defineErrors('User', {
+  NotFound: { status: 404, message: ... },
+});
+
+// Just throw — no paradigm shift
+function getUser(id: string): Promise<User> {
+  if (!user) throw UserErrors.NotFound({ userId: id });
+}
+          </code></div>
+        </div>
+      </div>
+
+      <p>With faultline, the same <code>UserErrors.NotFound</code> definition works whether you throw it (Stage 1) or return it as a <code>Result</code> (Stage 3). You don't have to choose upfront, and you never redefine your errors when you move between paradigms.</p>
+
+      <p>neverthrow also doesn't provide error definitions, ESLint integration, serialization, or error boundaries — you build those yourself.</p>
+
+      <h3>vs. Effect</h3>
+
+      <p>Effect is genuinely impressive. It solves dependency injection, concurrency, streaming, metrics, and typed errors in one cohesive system. But it's an all-or-nothing runtime — your entire codebase runs inside Effect.</p>
+
+      <p>Faultline is focused on errors only. It's a library, not a runtime. You can adopt it in 5 minutes with zero changes to your existing patterns, architecture, or dependencies. If you need Effect's full power, use Effect. If you need typed errors without the commitment, use faultline.</p>
+
+      <h3>Quick reference</h3>
+
+      <div class="docs-table-wrap">
+        <table>
+          <thead>
+            <tr>
+              <th></th>
+              <th>Hand-rolled</th>
+              <th>neverthrow</th>
+              <th>Effect</th>
+              <th>faultline</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr><td>Start with throw/catch</td><td class="check">&#10003;</td><td class="cross">&#10007;</td><td class="cross">&#10007;</td><td class="check">&#10003;</td></tr>
+            <tr><td>Typed error data</td><td class="partial">Manual</td><td class="cross">&#10007;</td><td class="check">&#10003;</td><td class="check">&#10003;</td></tr>
+            <tr><td>ESLint integration</td><td class="cross">&#10007;</td><td class="cross">&#10007;</td><td class="cross">&#10007;</td><td class="check">&#10003;</td></tr>
+            <tr><td>Error definitions</td><td class="cross">&#10007;</td><td class="cross">&#10007;</td><td class="check">&#10003;</td><td class="check">&#10003;</td></tr>
+            <tr><td>Result types</td><td class="cross">&#10007;</td><td class="check">&#10003;</td><td class="check">&#10003;</td><td class="check">&#10003;</td></tr>
+            <tr><td>Error boundaries</td><td class="cross">&#10007;</td><td class="cross">&#10007;</td><td class="check">&#10003;</td><td class="check">&#10003;</td></tr>
+            <tr><td>Serialization</td><td class="partial">Manual</td><td class="cross">&#10007;</td><td class="cross">&#10007;</td><td class="check">&#10003;</td></tr>
+            <tr><td>Progressive adoption</td><td class="partial">N/A</td><td class="partial">All-or-nothing</td><td class="partial">All-or-nothing</td><td class="check">Staged</td></tr>
+          </tbody>
+        </table>
+      </div>
+
+      <!-- ────────────────────────────────────────────────────
+           API REFERENCE
+           ──────────────────────────────────────────────────── -->
+
+      <h2 id="api-errors">Error Definition</h2>
+
+      <div class="docs-table-wrap">
+        <table>
+          <thead>
+            <tr>
+              <th>Export</th>
+              <th>Description</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr>
+              <td><code>defineError(def)</code></td>
+              <td>Create a single error factory</td>
+            </tr>
+            <tr>
+              <td><code>defineErrors(namespace, defs)</code></td>
+              <td>Create a group of error factories under a namespace</td>
+            </tr>
+            <tr>
+              <td><code>Infer&lt;T&gt;</code></td>
+              <td>Extract the error type from a factory or group</td>
+            </tr>
+            <tr>
+              <td><code>ErrorOutput</code></td>
+              <td>Symbol key for error type extraction</td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+
+      <!-- ── API: Result ───────────────────────────────────── -->
+
+      <h2 id="api-result">Result</h2>
+
+      <div class="docs-table-wrap">
+        <table>
+          <thead>
+            <tr>
+              <th>Export</th>
+              <th>Description</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr>
+              <td><code>ok(value)</code></td>
+              <td>Create a success result</td>
+            </tr>
+            <tr>
+              <td><code>err(error)</code></td>
+              <td>Create a failure result</td>
+            </tr>
+            <tr>
+              <td><code>isOk(result)</code> / <code>isErr(result)</code></td>
+              <td>Type guard narrowing</td>
+            </tr>
+            <tr>
+              <td><code>isErrTag(result, tag)</code></td>
+              <td>Narrow to a specific error tag</td>
+            </tr>
+            <tr>
+              <td><code>match(result, handlers)</code></td>
+              <td>Exhaustive or partial pattern match</td>
+            </tr>
+            <tr>
+              <td><code>catchTag(result, tag, handler)</code></td>
+              <td>Handle one error tag, remove it from the type</td>
+            </tr>
+            <tr>
+              <td><code>all(results)</code></td>
+              <td>Collect all results; combine errors on failure</td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+
+      <h3>Result Methods</h3>
+
+      <div class="docs-table-wrap">
+        <table>
+          <thead>
+            <tr>
+              <th>Method</th>
+              <th>Description</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr>
+              <td><code>.map(fn)</code></td>
+              <td>Transform the success value</td>
+            </tr>
+            <tr>
+              <td><code>.mapErr(fn)</code></td>
+              <td>Transform the error</td>
+            </tr>
+            <tr>
+              <td><code>.andThen(fn)</code></td>
+              <td>Chain to another Result-returning function</td>
+            </tr>
+            <tr>
+              <td><code>.catchTag(tag, fn)</code></td>
+              <td>Recover from a specific error tag</td>
+            </tr>
+            <tr>
+              <td><code>.match(handlers)</code></td>
+              <td>Pattern match on success/failure</td>
+            </tr>
+            <tr>
+              <td><code>.tap(fn)</code> / <code>.tapError(fn)</code></td>
+              <td>Side effects without changing the result</td>
+            </tr>
+            <tr>
+              <td><code>.withContext(frame)</code></td>
+              <td>Add a context frame to the error</td>
+            </tr>
+            <tr>
+              <td><code>.unwrap()</code></td>
+              <td>Extract value or throw</td>
+            </tr>
+            <tr>
+              <td><code>.unwrapOr(fallback)</code></td>
+              <td>Extract value or use fallback</td>
+            </tr>
+            <tr>
+              <td><code>.toTask()</code></td>
+              <td>Convert to a lazy <code>TaskResult</code></td>
+            </tr>
+            <tr>
+              <td><code>.toJSON()</code></td>
+              <td>Serialize to JSON-safe object</td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+
+      <!-- ── API: TaskResult ───────────────────────────────── -->
+
+      <h2 id="api-task">TaskResult</h2>
+
+      <div class="docs-table-wrap">
+        <table>
+          <thead>
+            <tr>
+              <th>Export</th>
+              <th>Description</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr>
+              <td><code>TaskResult.from(executor)</code></td>
+              <td>Create from an async executor</td>
+            </tr>
+            <tr>
+              <td><code>TaskResult.fromResult(result)</code></td>
+              <td>Wrap an existing Result</td>
+            </tr>
+            <tr>
+              <td><code>TaskResult.fromPromise(factory)</code></td>
+              <td>Create from a promise factory</td>
+            </tr>
+            <tr>
+              <td><code>TaskResult.ok(value)</code></td>
+              <td>Create a successful TaskResult</td>
+            </tr>
+            <tr>
+              <td><code>TaskResult.err(error)</code></td>
+              <td>Create a failed TaskResult</td>
+            </tr>
+            <tr>
+              <td><code>.run(options?)</code></td>
+              <td>Execute the task, returns <code>Promise&lt;Result&gt;</code></td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+
+      <p>TaskResult supports <code>.map()</code>, <code>.mapErr()</code>, <code>.andThen()</code>, <code>.catchTag()</code>, <code>.match()</code>, and <code>.withContext()</code> — same API as Result.</p>
+
+      <!-- ── API: Error Handling ────────────────────────────── -->
+
+      <h2 id="api-handling">Error Handling</h2>
+
+      <div class="docs-table-wrap">
+        <table>
+          <thead>
+            <tr>
+              <th>Export</th>
+              <th>Description</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr>
+              <td><code>attempt(fn, options?)</code></td>
+              <td>Wrap sync code — catches throws, returns <code>Result</code></td>
+            </tr>
+            <tr>
+              <td><code>attemptAsync(fn, options?)</code></td>
+              <td>Wrap async code — returns <code>TaskResult</code> with AbortSignal support</td>
+            </tr>
+            <tr>
+              <td><code>fromUnknown(thrown, options?)</code></td>
+              <td>Convert any thrown value to an <code>AppError</code></td>
+            </tr>
+            <tr>
+              <td><code>narrowError(e, groups)</code></td>
+              <td>Type-narrow a caught value against error groups</td>
+            </tr>
+            <tr>
+              <td><code>isAppError(e)</code></td>
+              <td>Type guard for <code>AppError</code></td>
+            </tr>
+            <tr>
+              <td><code>isErrorTag(e, tagOrFactory)</code></td>
+              <td>Type guard for a specific error tag</td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+
+      <!-- ── API: Boundaries ───────────────────────────────── -->
+
+      <h2 id="api-boundaries">Boundaries</h2>
+
+      <div class="docs-table-wrap">
+        <table>
+          <thead>
+            <tr>
+              <th>Export</th>
+              <th>Description</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr>
+              <td><code>defineBoundary({ name, from, map })</code></td>
+              <td>Create an exhaustive error mapping between layers</td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+
+      <!-- ── API: Serialization ────────────────────────────── -->
+
+      <h2 id="api-serial">Serialization</h2>
+
+      <div class="docs-table-wrap">
+        <table>
+          <thead>
+            <tr>
+              <th>Export</th>
+              <th>Description</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr>
+              <td><code>serializeError(error)</code></td>
+              <td>Convert <code>AppError</code> to JSON-safe object</td>
+            </tr>
+            <tr>
+              <td><code>deserializeError(data)</code></td>
+              <td>Restore from serialized form</td>
+            </tr>
+            <tr>
+              <td><code>serializeResult(result)</code></td>
+              <td>Serialize a <code>Result</code></td>
+            </tr>
+            <tr>
+              <td><code>deserializeResult(data)</code></td>
+              <td>Restore from serialized form</td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+
+      <!-- ── API: Configuration ────────────────────────────── -->
+
+      <h2 id="api-config">Configuration</h2>
+
+      <div class="docs-table-wrap">
+        <table>
+          <thead>
+            <tr>
+              <th>Export</th>
+              <th>Description</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr>
+              <td><code>configureErrors(options)</code></td>
+              <td>Set global stack capture and redaction paths</td>
+            </tr>
+            <tr>
+              <td><code>getErrorConfig()</code></td>
+              <td>Read current config (frozen)</td>
+            </tr>
+            <tr>
+              <td><code>resetErrorConfig()</code></td>
+              <td>Reset to defaults (useful in tests)</td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+
+    </main>
+  </div>
+
+  <!-- ── Scripts ─────────────────────────────────────────── -->
+
+  <script src="main.js"></script>
+  <script src="docs.js"></script>
+
+</body>
+</html>

@@ -1,0 +1,250 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>faultline — Type-safe errors for TypeScript</title>
+  <meta name="description" content="Define your errors. Throw them like normal. The tooling catches what you miss. Type-safe error handling for TypeScript with ESLint integration.">
+  <link rel="icon" href="favicon.svg" type="image/svg+xml">
+  <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+
+  <!-- ── Navigation ──────────────────────────────────────── -->
+
+  <nav class="nav">
+    <div class="nav-inner">
+      <a href="index.html" class="nav-brand">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M2 12h4l2-6 3 12 2.5-8 1.5 4h2l2-3h3"/></svg>
+        faultline
+      </a>
+      <button class="nav-hamburger" aria-expanded="false" aria-label="Toggle menu">
+        <span></span>
+        <span></span>
+        <span></span>
+      </button>
+      <ul class="nav-links">
+        <li><a href="docs.html">Docs</a></li>
+        <li><a href="https://github.com/danfry1/faultline" target="_blank" rel="noopener noreferrer">GitHub</a></li>
+      </ul>
+    </div>
+  </nav>
+
+  <!-- ── Hero ────────────────────────────────────────────── -->
+
+  <section class="hero">
+    <div class="container">
+      <div class="hero-grid">
+
+        <div class="hero-text">
+          <h1>Errors your compiler understands</h1>
+          <p class="hero-sub">Define your errors. Throw them like normal. The tooling catches what you miss.</p>
+
+          <div class="install-box">
+            <div class="install-tabs" id="install-tabs">
+              <button class="install-tab is-active" data-pm="npm">npm</button>
+              <button class="install-tab" data-pm="bun">bun</button>
+              <button class="install-tab" data-pm="pnpm">pnpm</button>
+              <button class="install-tab" data-pm="yarn">yarn</button>
+            </div>
+            <div class="install-cmd">
+              <code><span id="install-cmd">npm install faultline</span></code>
+              <button class="install-copy" id="install-copy" data-copy="npm install faultline">Copy</button>
+            </div>
+          </div>
+
+          <div class="hero-ctas">
+            <a href="docs.html" class="btn btn-primary">Get Started</a>
+            <a href="https://github.com/danfry1/faultline" target="_blank" rel="noopener noreferrer" class="btn btn-secondary">GitHub</a>
+          </div>
+        </div>
+
+        <div class="demo-editor" id="demo-editor"></div>
+
+      </div>
+    </div>
+  </section>
+
+  <!-- ── Seismograph divider ─────────────────────────────── -->
+
+  <svg class="seismo-divider" viewBox="0 0 1200 32" preserveAspectRatio="none">
+    <path d="M0 16h200l20-8 15 16 12-10 8 6h30l10-4 15 12 10-8 6 3h60l12-6 18 14 14-10 8 5h50l20-10 25 20 18-14 10 7h40l8-3 12 10 10-8 6 4h80l15-6 20 16 16-12 10 6h60l10-4 14 12 12-10 8 5h50l18-8 22 18 15-12 8 6h30l10-5 16 14 12-10 6 4h100"/>
+  </svg>
+
+  <!-- ── Two paths ──────────────────────────────────────────── -->
+
+  <section class="section">
+    <div class="container">
+      <h2 class="walkthrough-heading">Pick your starting point</h2>
+      <p class="section-sub">Both paths use the same error definitions. Start simple and level up, or jump straight into the full system.</p>
+
+      <div class="paths">
+
+        <!-- Path 1: Throw/Catch -->
+        <div class="path-card">
+          <div class="path-badge">Start here</div>
+          <h3>Throw &amp; catch</h3>
+          <p class="path-desc">Keep your existing patterns. Define typed errors, throw them, and let the ESLint plugin catch your mistakes.</p>
+
+          <div class="code-block" data-line-numbers="false">
+            <code>
+throw UserErrors.NotFound({ userId: id });
+
+// catch — fully typed
+if (isErrorTag(e, UserErrors.NotFound)) {
+  e.data.userId  // string
+  e.status       // 404
+}
+            </code>
+          </div>
+
+          <ul class="path-features">
+            <li>ESLint warns on <code>throw new Error()</code></li>
+            <li>ESLint flags incomplete catch blocks</li>
+            <li>Structured <code>.toJSON()</code> serialization</li>
+            <li>Zero paradigm shift</li>
+          </ul>
+
+          <a href="docs.html#installation" class="btn btn-secondary" style="width: 100%; justify-content: center;">Get started</a>
+        </div>
+
+        <!-- Path 2: Full system -->
+        <div class="path-card path-card-advanced">
+          <div class="path-badge path-badge-advanced">Full power</div>
+          <h3>Result types &amp; beyond</h3>
+          <p class="path-desc">Compiler-tracked errors through your entire pipeline. Exhaustive matching, error boundaries, and typed recovery.</p>
+
+          <div class="code-block" data-line-numbers="false">
+            <code>
+getUser(userId)
+  .andThen(user => chargeCard(user, amount))
+  .match({
+    ok: (receipt) => ({ status: 200 }),
+    'User.NotFound': (e) => ({ status: 404 }),
+    'Payment.Declined': () => ({ status: 402 }),
+  });
+            </code>
+          </div>
+
+          <ul class="path-features">
+            <li>Same <code>defineErrors</code> — nothing to rewrite</li>
+            <li>Compiler tracks every error in the chain</li>
+            <li>Exhaustive matching and <code>catchTag</code> recovery</li>
+            <li>Cross-layer boundary mappings</li>
+          </ul>
+
+          <a href="docs.html#ok-err" class="btn btn-primary" style="width: 100%; justify-content: center;">Explore Result types</a>
+        </div>
+
+      </div>
+    </div>
+  </section>
+
+  <!-- ── What the ESLint plugin catches ───────────────────── -->
+
+  <section class="section" style="background: var(--bg-surface);">
+    <div class="container">
+      <h2 class="walkthrough-heading">The ESLint plugin is the secret weapon</h2>
+      <p class="section-sub">No other error library has this. The linter knows what your functions throw and tells you what you missed.</p>
+
+      <div class="lint-scenarios">
+
+        <div class="lint-scenario">
+          <div class="lint-scenario-header">
+            <span class="lint-icon">⚠</span>
+            <div>
+              <strong>You write a raw throw</strong>
+              <span class="lint-rule">faultline/no-raw-throw</span>
+            </div>
+          </div>
+          <p>Flags <code>throw new Error(...)</code> and nudges you toward a typed factory. You fix it in one line.</p>
+        </div>
+
+        <div class="lint-scenario">
+          <div class="lint-scenario-header">
+            <span class="lint-icon">⚠</span>
+            <div>
+              <strong>Your catch block is incomplete</strong>
+              <span class="lint-rule">faultline/uncovered-catch</span>
+            </div>
+          </div>
+          <p>Analyzes what each function can throw — even across files — and warns when your catch doesn't cover all cases.</p>
+        </div>
+
+        <div class="lint-scenario">
+          <div class="lint-scenario-header">
+            <span class="lint-icon">⚠</span>
+            <div>
+              <strong>Someone adds a new error type</strong>
+              <span class="lint-rule">faultline/uncovered-catch</span>
+            </div>
+          </div>
+          <p>Immediately flags every catch block in your codebase that needs updating. You'll never silently miss a new error type.</p>
+        </div>
+
+      </div>
+    </div>
+  </section>
+
+  <!-- ── Try it live ────────────────────────────────────────── -->
+
+  <section class="section">
+    <div class="container">
+      <div class="playground-section">
+        <div class="playground-text">
+          <h2>Try it live</h2>
+          <p>Open a pre-configured TypeScript project with faultline installed. Define errors, throw them, catch them — see the types in action.</p>
+          <a href="https://stackblitz.com/edit/faultline-playground?file=src%2Findex.ts" target="_blank" rel="noopener noreferrer" class="btn btn-primary">
+            <svg width="16" height="16" viewBox="0 0 28 28" fill="currentColor"><path d="M12.747 16.273h-7.46L18.925 1.5l-3.671 10.227h7.46L9.075 26.5l3.672-10.227z"/></svg>
+            Open in StackBlitz
+          </a>
+          <a href="https://github.com/danfry1/faultline/tree/main/examples" target="_blank" rel="noopener noreferrer" class="btn btn-secondary">View examples on GitHub</a>
+        </div>
+        <!-- TODO: Once published to npm, replace the button above with an iframe embed:
+        <div class="playground-embed">
+          <iframe
+            src="https://stackblitz.com/edit/faultline-playground?embed=1&file=src/index.ts&theme=dark&hideNavigation=1"
+            style="width:100%; height:500px; border:0; border-radius: var(--radius-md); overflow:hidden;"
+            title="faultline playground"
+            allow="accelerometer; ambient-light-sensor; camera; encrypted-media; geolocation; gyroscope; hid; microphone; midi; payment; usb; vr; xr-spatial-tracking"
+            sandbox="allow-forms allow-modals allow-popups allow-presentation allow-same-origin allow-scripts"
+          ></iframe>
+        </div>
+        -->
+      </div>
+    </div>
+  </section>
+
+  <!-- ── Ready to start? ──────────────────────────────────── -->
+
+  <section class="section" style="background: var(--bg-surface);">
+    <div class="container" style="text-align: center;">
+      <h2>Ready to start?</h2>
+      <div class="cta-install"><code>npm install faultline</code></div>
+      <div class="cta-buttons">
+        <a href="docs.html" class="btn btn-primary">Read the docs</a>
+        <a href="https://github.com/danfry1/faultline" target="_blank" rel="noopener noreferrer" class="btn btn-secondary">Browse on GitHub</a>
+      </div>
+    </div>
+  </section>
+
+  <!-- ── Footer ──────────────────────────────────────────── -->
+
+  <footer class="footer">
+    <div class="container">
+      <ul class="footer-links">
+        <li><a href="docs.html">Docs</a></li>
+        <li><a href="https://github.com/danfry1/faultline" target="_blank" rel="noopener noreferrer">GitHub</a></li>
+        <li><a href="https://npmjs.com/package/faultline" target="_blank" rel="noopener noreferrer">npm</a></li>
+      </ul>
+      <p>MIT License</p>
+    </div>
+  </footer>
+
+  <!-- ── Scripts ─────────────────────────────────────────── -->
+
+  <script src="main.js"></script>
+  <script src="demo.js"></script>
+
+</body>
+</html>
