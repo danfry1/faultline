@@ -1,6 +1,6 @@
 {
   "name": "faultline",
-  "version": "0.1.0",
+  "version": "0.2.0",
   "description": "The complete type-safe error system for TypeScript.",
   "author": "Daniel Fry",
   "license": "MIT",
@@ -31,7 +31,12 @@
       }
     }
   },
-  "files": ["dist", "README.md", "LICENSE", "CHANGELOG.md"],
+  "files": [
+    "dist",
+    "README.md",
+    "LICENSE",
+    "CHANGELOG.md"
+  ],
   "scripts": {
     "build": "tsdown src/index.ts src/test.ts --format esm,cjs --dts",
     "test": "bun test",
@@ -39,8 +44,14 @@
     "prepublishOnly": "bun run typecheck && bun run test && bun run build"
   },
   "keywords": [
-    "typescript", "errors", "error-handling", "result", "typed-errors",
-    "type-safe", "error-system", "faultline"
+    "typescript",
+    "errors",
+    "error-handling",
+    "result",
+    "typed-errors",
+    "type-safe",
+    "error-system",
+    "faultline"
   ],
   "engines": {
     "node": ">=18.0.0"

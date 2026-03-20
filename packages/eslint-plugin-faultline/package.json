@@ -1,6 +1,6 @@
 {
   "name": "eslint-plugin-faultline",
-  "version": "0.1.0",
+  "version": "0.2.0",
   "description": "ESLint rules for type-safe error handling — checks that catch blocks cover all throwable error types.",
   "main": "dist/index.js",
   "types": "dist/index.d.ts",
