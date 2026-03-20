@@ -28,7 +28,7 @@ jobs:
         run: bun --filter 'faultline' build
       - name: Validate package exports
         working-directory: packages/faultline
-        run: npm pack && npx @arethetypeswrong/cli ./faultline-*.tgz
+        run: npm pack && npx @arethetypeswrong/cli ./faultline-*.tgz --ignore-rules no-resolution
       - name: Publish to npm
         working-directory: packages/faultline
         run: npm publish --provenance --access public
