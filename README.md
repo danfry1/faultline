@@ -25,6 +25,16 @@ TypeScript tells you the shape of your data, but not the shape of your failures.
 
 Faultline fixes this incrementally. You don't need to rewrite your app. You don't need to learn a new paradigm. Start with what you already know — `throw` and `catch` — and let the tooling guide you forward.
 
+## How faultline differs
+
+**vs. neverthrow, ts-results, true-myth.** These are solid Result-type libraries. Faultline's difference is that it doesn't ask you to convert your throws first. Stage 1 — typed factories plus the ESLint plugin — delivers most of the value while your code keeps using `throw` and `catch`. Result types are there when you want them at Stage 3.
+
+**vs. Effect.** Effect is more powerful and more mature. Faultline is narrowly focused on errors: no effect system, no runtime, no scheduler. Just typed errors plus optional Results. The learning curve is hours, not weeks.
+
+**vs. typed `Error` subclasses.** Custom Error classes work. Faultline derives consistent tags, codes, status values, and serialization from a single declaration, ships an ESLint plugin that catches drift, and gives you a smooth path to Result types if you want them later.
+
+**vs. the `?=` proposal.** You may have seen the TC39 [Safe Assignment Operator (`?=`) proposal](https://github.com/nicolo-ribaudo/tc39-proposal-safe-assignment-operator) or libraries that return `[error, value]` tuples. Faultline uses discriminated unions instead because: (1) TypeScript narrows discriminated unions more reliably than tuple truthiness — after `if (isErr(result))`, the compiler *guarantees* the error type; (2) the `?=` proposal doesn't type the error — it's still `unknown`; (3) a single `result` value composes with `match()`, returns cleanly from functions, and chains methods. If you prefer tuple syntax, a one-line helper gets you there and your errors stay fully typed (see "Why not `[err, value]` tuples?" below).
+
 ## Install
 
 ```bash
@@ -235,21 +245,7 @@ This errors on any raw `throw` and any uncovered catch — pushing you toward Re
 
 ### Why not `[err, value]` tuples?
 
-You may have seen the TC39 [Safe Assignment Operator (`?=`) proposal](https://github.com/nicolo-ribaudo/tc39-proposal-safe-assignment-operator) or libraries that return `[error, value]` tuples:
-
-```ts
-const [err, user] = safeTry(() => getUser(id));
-```
-
-We considered this but chose discriminated unions (`result._type`) for a few reasons:
-
-1. **TypeScript narrows discriminated unions more reliably than tuple truthiness.** After `if (isErr(result))`, the compiler *guarantees* `result.error` is typed. With `if (err)`, you're relying on truthiness narrowing — which works but is a weaker contract and easier to get backwards.
-
-2. **The `?=` proposal doesn't type the error.** It's sugar for try/catch — `err` is still `unknown`. Faultline's value is that errors carry typed data, tags, and codes. Even if `?=` lands, you'd still want faultline underneath.
-
-3. **A single `result` value composes better.** You can pass it to `match()`, return it from functions, or chain methods on it. Two separate variables can't do that.
-
-If you prefer the tuple syntax, a one-line helper gets you there — and your errors stay fully typed:
+We chose discriminated unions over tuples (see "How faultline differs" above). If you prefer the tuple syntax, a one-line helper gets you there — and your errors stay fully typed:
 
 ```ts
 function tryResult<T, E extends AppError>(
