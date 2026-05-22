@@ -9,6 +9,7 @@ import {
 import { SystemErrors } from './system-errors';
 
 type InferCancelled = ReturnType<typeof SystemErrors.Cancelled>;
+type InferUnexpected = ReturnType<typeof SystemErrors.Unexpected>;
 
 function checkCancelled(context: TaskContext): InferCancelled | undefined {
   if (context.signal?.aborted) {
@@ -62,11 +63,21 @@ export class TaskResult<T, E extends AppError = never> {
     return TaskResult.from(async () => result);
   }
 
-  /** Creates a TaskResult from a factory that returns a Promise of Result. The factory is called on each `.run()`. */
+  /** Creates a TaskResult from a factory that returns a Promise of Result. The factory is called on each `.run()`. Rejections are captured as System.Unexpected with the thrown value as `.cause`. */
   static fromPromise<T, E extends AppError>(
     factory: () => Promise<Result<T, E>>,
-  ): TaskResult<T, E> {
-    return new TaskResult(async () => factory());
+  ): TaskResult<T, E | InferUnexpected> {
+    return new TaskResult(async () => {
+      try {
+        return await factory();
+      } catch (thrown) {
+        const message = thrown instanceof Error ? thrown.message : typeof thrown === 'string' ? thrown : 'Unexpected error';
+        const name = thrown instanceof Error ? thrown.name : undefined;
+        const unexpected = SystemErrors.Unexpected({ name, message });
+        // withCause returns AppError — narrowing to InferUnexpected is safe since we created it via SystemErrors.Unexpected
+        return err((thrown !== null && thrown !== undefined ? unexpected.withCause(thrown) : unexpected) as InferUnexpected) as Result<T, E | InferUnexpected>;
+      }
+    });
   }
 
   /** Creates a successful TaskResult. */

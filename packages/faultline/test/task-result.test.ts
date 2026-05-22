@@ -119,6 +119,32 @@ describe('TaskResult.withContext', () => {
   });
 });
 
+describe('TaskResult.fromPromise rejection handling', () => {
+  test('rejected factory becomes System.Unexpected with cause preserved', async () => {
+    const original = new Error('boom');
+    const task = TaskResult.fromPromise(async () => {
+      throw original;
+    });
+    const result = await task.run();
+
+    expect(isErr(result)).toBe(true);
+    if (isErr(result)) {
+      expect(result.error._tag).toBe('System.Unexpected');
+      expect(result.error.cause).toBe(original);
+    }
+  });
+
+  test('successful factory passes through unchanged', async () => {
+    const task = TaskResult.fromPromise(async () => ok(42));
+    const result = await task.run();
+
+    expect(isOk(result)).toBe(true);
+    if (isOk(result)) {
+      expect(result.value).toBe(42);
+    }
+  });
+});
+
 describe('TaskResult cancellation propagation', () => {
   test('aborting mid-chain short-circuits subsequent steps', async () => {
     const stepsRun: number[] = [];
