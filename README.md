@@ -313,6 +313,33 @@ const result = attempt(() => JSON.parse(raw));
 // Result<unknown, System.Unexpected>
 ```
 
+### When to use TaskResult vs `Promise<Result>`
+
+Reach for `TaskResult` when you need one of:
+
+- **Cancellation through a pipeline.** Pass an `AbortSignal` to `.run({ signal })` and every chained step checks it. Abort once, and the rest of the chain short-circuits to `System.Cancelled` — no partial work continues.
+- **Context frames across async steps.** Use `.withContext({ ... })` to attach observability metadata that survives composition.
+- **Lazy composition.** Build the pipeline, hand it off, run it later. Plain Promises run eagerly the moment you construct them.
+
+Otherwise, `Promise<Result>` is fine. It composes with `await` and plain `if (isErr(result))` checks just like the synchronous Stage 3 examples.
+
+```ts
+// Promise<Result> — perfectly good for most async work
+async function getUser(id: string): Promise<Result<User, User.NotFound>> {
+  const user = await db.users.find(id);
+  if (!user) return err(UserErrors.NotFound({ userId: id }));
+  return ok(user);
+}
+
+// TaskResult — when you need cancellation or context propagation
+const task = attemptAsync(
+  async (signal) => fetch(`/api/users/${id}`, { signal }),
+  { mapUnknown: () => UserErrors.NotFound({ userId: id }) },
+).withContext({ layer: 'service', operation: 'getUser' });
+
+const result = await task.run({ signal: controller.signal });
+```
+
 ### Error Boundaries
 
 Map domain errors to HTTP errors (or any other layer) with `defineBoundary`. The mapping is exhaustive — add a new domain error and the compiler tells you to add a handler.
