@@ -187,3 +187,17 @@ type _ExplicitCodeLiteral = Expect<
 type _AutoCodeLiteral = Expect<
   Equal<ReturnType<typeof ExplicitCodeErrors.NotFound>['code'], 'USER_NOT_FOUND'>
 >;
+
+// === Cancellation widening ===
+type CancelledTag = ReturnType<typeof SystemErrors.Cancelled>['_tag'];
+type _CancelledTagIsCorrect = Expect<Equal<CancelledTag, 'System.Cancelled'>>;
+
+// After .map, the error union must include System.Cancelled
+const _baseTask: TaskResult<number, never> = TaskResult.ok(1);
+const _mappedTask = _baseTask.map((v) => v + 1);
+type MappedError = Awaited<ReturnType<typeof _mappedTask.run>> extends Result<unknown, infer E> ? E : never;
+
+// MappedError should be a union containing System.Cancelled (the AppError instance)
+type _IncludesCancelled = Expect<
+  Equal<MappedError extends { _tag: 'System.Cancelled' } ? true : never, true>
+>;
