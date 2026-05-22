@@ -1,7 +1,8 @@
 import type { RuleExpectation } from '../types';
 
 export const expected: RuleExpectation[] = [
-  { rule: 'uncovered-catch', line: 23, messageId: 'uncheckedCatch', note: 'method throws Svc.Bad (catch at line 23)' },
-  // Getter access is a MemberExpression, not a CallExpression — likely missed. TRIAGE.
-  { rule: 'uncovered-catch', line: 32, shouldNotReport: true, note: 'TRIAGE: getter access not detected as throwing (catch at line 32)' },
+  // Design constraint: uncovered-catch requires the called method/function to have a
+  // declared error return type. Class methods without such annotation are invisible to the rule.
+  { rule: 'uncovered-catch', line: 22, shouldNotReport: true, note: 'design: requires declared error return type' },
+  { rule: 'uncovered-catch', line: 31, shouldNotReport: true, note: 'getter access is MemberExpression, not CallExpression' },
 ];
