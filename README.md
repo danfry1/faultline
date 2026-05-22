@@ -72,6 +72,23 @@ Tags and codes are auto-generated:
 - `UserErrors.NotFound(...)._tag` → `'User.NotFound'`
 - `UserErrors.NotFound(...).code` → `'USER_NOT_FOUND'`
 
+**Codes default to auto-generated `SCREAMING_SNAKE_CASE` from the tag.** If you have an existing error-code convention, pass an explicit `code` — it's preserved at the type level too, so downstream consumers see the literal string:
+
+```ts
+const UserErrors = defineErrors('User', {
+  // Auto-generated: code === 'USER_NOT_FOUND'
+  NotFound: {
+    status: 404,
+    message: (data: { userId: string }) => `User ${data.userId} not found`,
+  },
+  // Explicit: code === 'ERR_AUTH_401' (literal type preserved)
+  Unauthorized: {
+    code: 'ERR_AUTH_401',
+    status: 401,
+  },
+});
+```
+
 **Throw them like you already do:**
 
 ```ts
