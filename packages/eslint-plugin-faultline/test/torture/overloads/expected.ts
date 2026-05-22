@@ -1,6 +1,10 @@
 import type { RuleExpectation } from '../types';
 
 export const expected: RuleExpectation[] = [
-  // Current rule picks callSigs[0] — likely misses one of the overloads. TRIAGE candidate.
-  { rule: 'uncovered-catch', line: 20, shouldNotReport: true, note: 'TRIAGE: overloads — current code only inspects signature [0]' },
+  {
+    rule: 'throw-type-mismatch',
+    line: 22,
+    messageId: 'transitiveError',
+    note: 'all overload signatures now inspected — E.B from overload 2 is detected as undeclared',
+  },
 ];

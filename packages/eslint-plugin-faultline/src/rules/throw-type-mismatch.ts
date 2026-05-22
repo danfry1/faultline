@@ -18,8 +18,14 @@ function getDeclaredErrorTags(
   const callSignatures = type.getCallSignatures();
   if (callSignatures.length === 0) return [];
 
-  const returnType = checker.getReturnTypeOfSignature(callSignatures[0]!);
-  return extractErrorTagsFromType(checker, returnType);
+  const tagSet = new Set<string>();
+  for (const sig of callSignatures) {
+    const returnType = checker.getReturnTypeOfSignature(sig);
+    for (const tag of extractErrorTagsFromType(checker, returnType)) {
+      tagSet.add(tag);
+    }
+  }
+  return [...tagSet];
 }
 
 /**
@@ -95,8 +101,14 @@ export const throwTypeMismatch = createRule({
             const varType = checker.getTypeAtLocation(varNode);
             const callSigs = varType.getCallSignatures();
             if (callSigs.length > 0) {
-              const returnType = checker.getReturnTypeOfSignature(callSigs[0]!);
-              const tags = extractErrorTagsFromType(checker, returnType);
+              const tagSet = new Set<string>();
+              for (const sig of callSigs) {
+                const returnType = checker.getReturnTypeOfSignature(sig);
+                for (const tag of extractErrorTagsFromType(checker, returnType)) {
+                  tagSet.add(tag);
+                }
+              }
+              const tags = [...tagSet];
               if (tags.length > 0) return tags;
             }
           }
@@ -128,8 +140,14 @@ export const throwTypeMismatch = createRule({
       const callSigs = calleeType.getCallSignatures();
       if (callSigs.length === 0) return [];
 
-      const returnType = checker.getReturnTypeOfSignature(callSigs[0]!);
-      return extractErrorTagsFromType(checker, returnType);
+      const tagSet = new Set<string>();
+      for (const sig of callSigs) {
+        const returnType = checker.getReturnTypeOfSignature(sig);
+        for (const tag of extractErrorTagsFromType(checker, returnType)) {
+          tagSet.add(tag);
+        }
+      }
+      return [...tagSet];
     }
 
     return {
