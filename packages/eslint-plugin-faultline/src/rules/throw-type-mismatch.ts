@@ -175,12 +175,13 @@ export const throwTypeMismatch = createRule({
             });
           }
         } else {
-          // Can't determine the tag — might be `new Error()` or a variable
-          // Only report if the throw is a NewExpression or literal (not a call expression,
-          // which might be a factory we can't resolve)
+          // Can't determine the tag — might be `new Error()`, a variable, or a literal
+          // Report for NewExpression, Literal, and Identifier (variable whose type is unresolvable,
+          // e.g. typed as unknown/any). Exclude CallExpression — might be a factory we can't resolve.
           if (
             node.argument.type === 'NewExpression' ||
-            node.argument.type === 'Literal'
+            node.argument.type === 'Literal' ||
+            node.argument.type === 'Identifier'
           ) {
             context.report({
               node: node.argument,
