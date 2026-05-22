@@ -134,6 +134,19 @@ describe('TaskResult.fromPromise rejection handling', () => {
     }
   });
 
+  test('non-Error throws are still wrapped as System.Unexpected', async () => {
+    const task = TaskResult.fromPromise(async () => {
+      throw 'string-thrown-instead-of-error';
+    });
+    const result = await task.run();
+
+    expect(isErr(result)).toBe(true);
+    if (isErr(result)) {
+      expect(result.error._tag).toBe('System.Unexpected');
+      expect(result.error.cause).toBe('string-thrown-instead-of-error');
+    }
+  });
+
   test('successful factory passes through unchanged', async () => {
     const task = TaskResult.fromPromise(async () => ok(42));
     const result = await task.run();
