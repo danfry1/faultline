@@ -15,6 +15,14 @@
 - README: "When to use TaskResult vs Promise<Result>" decision guide.
 - README: explicit error-code escape hatch is now documented (the feature already existed; this fills a docs gap).
 
+### Added (Phase 4 — ESLint plugin)
+
+- ESLint plugin: torture-fixture test corpus exercising 11 real-world patterns (baselines, re-throws, generics, third-party throws, nested-try with closure-isolation case, await shapes, overloads with TypedPromise, re-exports with aliased imports, class methods, boundary handlers, variable throws).
+- ESLint plugin: `LIMITATIONS.md` documenting patterns the rules can't detect, including the design constraint that `uncovered-catch` requires declared error return types.
+- ESLint plugin: `throw-type-mismatch` now inspects all overload signatures, not just the first — overloaded functions are fully checked for transitive error propagation.
+- ESLint plugin: `throw-type-mismatch` reports `throw <identifier>` when the surrounding function declares a TypedPromise error type and the thrown variable's type has no resolvable `_tag`.
+- ESLint plugin: `uncovered-catch` no longer misattributes throws inside async closures (e.g., `setTimeout(async () => ...)`) to the outer try's catch.
+
 ### Tests
 
 - Type-level assertion that explicit `code` values on `defineErrors` definitions are preserved as literal types.
