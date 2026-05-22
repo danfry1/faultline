@@ -10,6 +10,7 @@ const TORTURE_ROOT = resolve(__dirname);
 
 function listCategories(): string[] {
   return readdirSync(TORTURE_ROOT).filter((entry) => {
+    if (entry.startsWith('.')) return false;
     const full = join(TORTURE_ROOT, entry);
     return statSync(full).isDirectory();
   });
@@ -94,7 +95,12 @@ describe('torture fixtures', () => {
         const lines: string[] = [`Fixture: ${category}`];
         if (missing.length > 0) {
           lines.push('MISSING expected reports:');
-          for (const m of missing) lines.push(`  ${JSON.stringify(m)}`);
+          for (const m of missing) {
+            const kind = m.shouldNotReport ? 'unexpected report' : 'missing report';
+            const idPart = m.messageId ? ` messageId=${m.messageId}` : '';
+            const notePart = m.note ? ` — ${m.note}` : '';
+            lines.push(`  ${kind}: ${m.rule} @ line ${m.line}${idPart}${notePart}`);
+          }
         }
         if (unexpected.length > 0) {
           lines.push('UNEXPECTED reports:');
