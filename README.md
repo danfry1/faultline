@@ -1,6 +1,6 @@
 # faultline
 
-The complete type-safe error system for TypeScript.
+The incremental type-safe error system for TypeScript.
 
 Define your errors. Throw them like normal. The ESLint plugin tells you when you miss something. Adopt Result types and boundaries when you're ready — or don't. Either way, your app is better off.
 
