@@ -95,6 +95,8 @@ export class TaskResult<T, E extends AppError = never> {
     });
   }
 
+  // Note: if the upstream error union includes System.Cancelled, fn will receive it.
+  // Use catchTag('System.Cancelled', ...) upstream of mapErr to short-circuit before transformation.
   mapErr<E2 extends AppError>(
     fn: (error: E) => E2 | Promise<E2>,
   ): TaskResult<T, E2 | InferCancelled> {

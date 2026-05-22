@@ -201,3 +201,11 @@ type MappedError = Awaited<ReturnType<typeof _mappedTask.run>> extends Result<un
 type _IncludesCancelled = Expect<
   Equal<MappedError extends { _tag: 'System.Cancelled' } ? true : never, true>
 >;
+
+// andThenTask also widens to include System.Cancelled
+const _innerTask: TaskResult<number, never> = TaskResult.ok(2);
+const _chainedTask = _baseTask.andThenTask(() => _innerTask);
+type ChainedError = Awaited<ReturnType<typeof _chainedTask.run>> extends Result<unknown, infer E> ? E : never;
+type _ChainedIncludesCancelled = Expect<
+  Equal<ChainedError extends { _tag: 'System.Cancelled' } ? true : never, true>
+>;
