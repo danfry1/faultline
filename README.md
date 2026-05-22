@@ -447,6 +447,8 @@ Three preset configs matching the adoption stages:
 | `faultline/uncovered-catch` | Ensure catch blocks handle all throwable error types |
 | `faultline/throw-type-mismatch` | Detect drift between thrown errors and TypedPromise declarations |
 
+**Known limitations:** see [`eslint-plugin-faultline/LIMITATIONS.md`](./packages/eslint-plugin-faultline/LIMITATIONS.md) for patterns the rules can't currently detect.
+
 ### CLI
 
 ```bash
