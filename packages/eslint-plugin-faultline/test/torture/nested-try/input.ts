@@ -1,4 +1,5 @@
-import { defineErrors, isErrorTag } from 'faultline';
+import { defineErrors, isErrorTag, type Infer } from 'faultline';
+import type { TypedPromise } from '../../../../faultline/src/typed-promise';
 
 const E = defineErrors('E', {
   Outer: { status: 500 },
@@ -31,5 +32,21 @@ function isolatedClosure() {
     }, 0);
   } catch (e) {
     // Outer catch shouldn't even be triggered — but the rule may misattribute
+  }
+}
+
+async function throwsTypedA(): TypedPromise<number, Infer<typeof E.Outer>> {
+  throw E.Outer();
+}
+
+// 3. Try containing a closure that calls a TypedPromise-annotated function.
+//    The closure's throw does NOT escape to the outer catch — outer must not be flagged.
+async function typedClosureInsideTry() {
+  try {
+    setTimeout(async () => {
+      await throwsTypedA();
+    }, 0);
+  } catch (e) {
+    // The outer catch never sees throwsTypedA's errors. Rule must not flag this.
   }
 }

@@ -16,9 +16,10 @@ const createRule = ESLintUtils.RuleCreator(
 function walkNode(
   sourceCode: { visitorKeys: Record<string, readonly string[]> },
   node: TSESTree.Node,
-  callback: (n: TSESTree.Node) => void,
+  callback: (n: TSESTree.Node) => boolean | void,
 ): void {
-  callback(node);
+  const skip = callback(node);
+  if (skip === false) return;
 
   const keys = sourceCode.visitorKeys[node.type];
   if (!keys) return;
@@ -73,6 +74,18 @@ export const uncoveredCatch = createRule({
         const tryErrorTags: Array<{ tag: string; functionName: string }> = [];
 
         walkNode(context.sourceCode, node.block, (astNode) => {
+          // Don't descend into async function literals — throws inside async closures
+          // are wrapped in rejected promises and cannot synchronously escape to the
+          // enclosing catch block (e.g., setTimeout callbacks, .map handlers, etc.).
+          // Synchronous closures (e.g., inline lambdas passed to generic helpers) are
+          // intentionally NOT skipped because their throws can propagate synchronously.
+          if (
+            (astNode.type === 'FunctionExpression' || astNode.type === 'ArrowFunctionExpression') &&
+            (astNode as TSESTree.FunctionExpression | TSESTree.ArrowFunctionExpression).async
+          ) {
+            return false;
+          }
+
           if (astNode.type !== 'CallExpression') return;
 
           const tsNode = services.esTreeNodeToTSNodeMap.get(astNode);
