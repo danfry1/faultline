@@ -250,8 +250,4 @@ export class TaskResult<T, E extends AppError = never> {
   run(options: TaskRunOptions = {}): Promise<Result<T, E>> {
     return this.executor(options);
   }
-
-  toPromise(options: TaskRunOptions = {}): Promise<Result<T, E>> {
-    return this.run(options);
-  }
 }
