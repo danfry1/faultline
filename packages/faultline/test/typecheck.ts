@@ -171,3 +171,19 @@ type _partialMatched = Expect<Equal<typeof partialMatched, string>>;
 
 const empty = all([] as const);
 const _emptyAll: Result<readonly [], never> = empty;
+
+// === Explicit code preservation ===
+const ExplicitCodeErrors = defineErrors('User', {
+  Unauthorized: { code: 'ERR_AUTH_401', status: 401 },
+  NotFound: { status: 404 },
+});
+
+// Explicit code is preserved as a literal type
+type _ExplicitCodeLiteral = Expect<
+  Equal<ReturnType<typeof ExplicitCodeErrors.Unauthorized>['code'], 'ERR_AUTH_401'>
+>;
+
+// Auto-generated code is also preserved as a literal type
+type _AutoCodeLiteral = Expect<
+  Equal<ReturnType<typeof ExplicitCodeErrors.NotFound>['code'], 'USER_NOT_FOUND'>
+>;
