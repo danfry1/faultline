@@ -15,5 +15,33 @@ jobs:
       - run: bun install --frozen-lockfile
       - run: bun run lint
       - run: bun run typecheck
-      - run: bun run test
-      - run: bun --filter 'faultline' build
+      - run: bun run test # enforces the coverage gate in packages/faultline/bunfig.toml
+      - name: Build publishable packages
+        run: bun --filter 'faultline' --filter 'eslint-plugin-faultline' --filter 'faultline-cli' build
+      - name: Validate faultline package exports
+        working-directory: packages/faultline
+        run: npm pack && npx @arethetypeswrong/cli ./faultline-*.tgz --ignore-rules no-resolution
+
+  node-compat:
+    needs: quality
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        node-version: [18, 20, 22]
+    steps:
+      - uses: actions/checkout@v4
+      - uses: oven-sh/setup-bun@v2
+      - run: bun install --frozen-lockfile
+      - name: Build publishable packages
+        run: bun --filter 'faultline' --filter 'eslint-plugin-faultline' --filter 'faultline-cli' build
+      - uses: actions/setup-node@v4
+        with:
+          node-version: ${{ matrix.node-version }}
+      - name: Smoke-test built artifacts on Node ${{ matrix.node-version }}
+        run: |
+          set -euo pipefail
+          node -e "const f=require('./packages/faultline/dist/index.cjs'); if(typeof f.defineErrors!=='function') throw new Error('CJS load failed'); console.log('faultline CJS ok')"
+          node --input-type=module -e "const f=await import('./packages/faultline/dist/index.js'); if(typeof f.defineErrors!=='function') throw new Error('ESM load failed'); console.log('faultline ESM ok')"
+          node -e "const p=require('./packages/eslint-plugin-faultline/dist/index.js'); if(!p.rules||!p.rules['no-raw-throw']) throw new Error('plugin load failed'); console.log('eslint-plugin ok')"
+          node packages/faultline-cli/dist/index.js catalog test/fixtures/sample-app | grep -q 'User.NotFound' && echo 'faultline-cli ok'
