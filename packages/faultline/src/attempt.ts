@@ -106,15 +106,21 @@ function defaultAbortMapper(
 
 /**
  * Runs an async function and captures thrown exceptions as typed errors.
- * Supports abort signals for cooperative cancellation.
+ *
+ * Cancellation is **cooperative**, not preemptive. When the `AbortSignal` passed
+ * to `.run({ signal })` aborts, the caller stops *waiting* and gets
+ * `System.Cancelled` — but the in-flight work keeps running unless your function
+ * honors the signal itself. Always thread `signal` into the actual work (e.g.
+ * `fetch(url, { signal })`) if you need the work, and its side effects, to stop.
+ * Otherwise a "cancelled" call can still commit its write.
  *
  * @example
  * ```ts
  * const task = attemptAsync(async (signal) => {
- *   const response = await fetch(url, { signal });
+ *   const response = await fetch(url, { signal }); // signal threaded through
  *   return response.json();
  * });
- * const result = await task.run();
+ * const result = await task.run({ signal: controller.signal });
  * ```
  */
 export function attemptAsync<T>(

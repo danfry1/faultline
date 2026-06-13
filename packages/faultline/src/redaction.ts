@@ -112,6 +112,20 @@ function setRedactedAtPath(target: unknown, path: readonly string[]): void {
   // Type narrowing: target confirmed as non-null object above, cast to Record for property access
   const obj = target as Record<string, unknown>;
 
+  if (key === '**') {
+    // Globstar: match the remaining path at the current level AND at every
+    // nested level. `**.password` redacts a `password` key wherever it appears.
+    // (1) zero levels consumed — try to match the remainder right here
+    setRedactedAtPath(target, rest);
+    // (2) one-or-more levels — recurse into every child, keeping the globstar
+    if (Array.isArray(target)) {
+      for (const item of target) setRedactedAtPath(item, path);
+    } else {
+      for (const k of Object.keys(obj)) setRedactedAtPath(obj[k], path);
+    }
+    return;
+  }
+
   if (key === '*') {
     // Wildcard: apply to all enumerable keys (or array indices).
     // Non-object items (null, primitives) are silently skipped — best-effort redaction.
@@ -146,12 +160,20 @@ function setRedactedAtPath(target: unknown, path: readonly string[]): void {
  * Deep-clones a value and replaces matching paths with `'[REDACTED]'`.
  * Returns the original reference when `redactPaths` is empty (no clone).
  *
- * @param redactPaths Dot-separated paths to redact. Use `*` as a wildcard
- *   segment to match all keys/indices at that level.
+ * @param redactPaths Dot-separated paths to redact. Paths are matched against
+ *   the structure being redacted (for serialized errors, that root has `data`,
+ *   `context`, `cause`, etc.). Wildcard segments:
+ *   - `*`  matches all keys/indices at exactly one level.
+ *   - `**` matches the remaining path at any depth (globstar). Use this to
+ *     redact a key wherever it appears, e.g. `**.password`.
+ *
+ *   A path that matches nothing is a no-op — redaction never throws and never
+ *   warns, so prefer `**.<key>` for sensitive keys rather than a brittle exact
+ *   path that silently fails to match.
  *
  * @example
  * ```ts
- * applyRedactions(obj, ['data.password', 'context.*.meta.token'])
+ * applyRedactions(obj, ['data.password', 'context.*.meta.token', '**.apiKey'])
  * ```
  */
 export function applyRedactions<T>(

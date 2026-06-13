@@ -322,7 +322,7 @@ const result = attempt(() => JSON.parse(raw));
 
 Reach for `TaskResult` when you need one of:
 
-- **Cancellation through a pipeline.** Pass an `AbortSignal` to `.run({ signal })` and every chained step checks it. Abort once, and the rest of the chain short-circuits to `System.Cancelled` — no partial work continues.
+- **Cancellation through a pipeline.** Pass an `AbortSignal` to `.run({ signal })` and every chained step checks it between steps. Abort once, and the *remaining* steps short-circuit to `System.Cancelled`. Cancellation is cooperative: a step already in flight runs to completion, and the underlying work only stops if you thread `signal` into it (e.g. `fetch(url, { signal })`). It stops *subsequent* steps and stops you *waiting* — it does not preempt work in progress.
 - **Context frames across async steps.** Use `.withContext({ ... })` to attach observability metadata that survives composition.
 - **Lazy composition.** Build the pipeline, hand it off, run it later. Plain Promises run eagerly the moment you construct them.
 
@@ -372,6 +372,8 @@ const httpError = userToHttp(domainError);
 // Original error preserved as .cause, boundary context auto-added
 ```
 
+The original error is always set as the mapped error's `.cause` — even if a handler sets its own cause, the boundary overwrites it. If an error whose tag isn't in `map` reaches the boundary (only possible via an `any`, a cast, or an error from outside the source group — exhaustive typing prevents it otherwise), the boundary **throws** `System.BoundaryViolation`. Since boundaries usually sit at a transport edge, wrap the call so a violation can't escape uncaught.
+
 ### Serialization
 
 Errors round-trip through JSON with full fidelity — tag, code, data, context, and cause chains.
@@ -410,13 +412,21 @@ import { configureErrors } from 'faultline';
 configureErrors({
   captureStack: false, // disable in production for performance
   redactPaths: [
-    'data.password',
-    'data.token',
-    'context.*.meta.apiKey', // wildcards supported
+    '**.password',           // ** = redact this key at ANY depth (recommended)
+    '**.token',
+    'data.ssn',              // exact path, rooted at the serialized error
+    'context.*.meta.apiKey', // * = one wildcard level
   ],
 });
 // serializeError() now replaces matched paths with '[REDACTED]'
 ```
+
+> **Important:** paths are matched against the *serialized error* (whose root has
+> `data`, `context`, `cause`, …), not against your raw value. A path that matches
+> nothing is a silent no-op — so for sensitive keys prefer the globstar form
+> `**.password`, which redacts that key wherever it appears, over a brittle exact
+> path like `password` (which would match only a top-level key and silently leak
+> anything nested).
 
 Stack capture defaults to `true` in development, `false` when `NODE_ENV=production`.
 

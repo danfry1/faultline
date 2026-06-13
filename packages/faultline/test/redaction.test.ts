@@ -103,4 +103,33 @@ describe('redaction', () => {
     const result = applyRedactions(obj, ['b.c.d']);
     expect(result).toEqual({ a: 1 });
   });
+
+  describe('globstar (**)', () => {
+    test('redacts a key at the root, nested objects, and array elements', () => {
+      const obj = {
+        password: 'top',
+        data: { password: 'in-data', safe: 'keep' },
+        context: [{ meta: { password: 'in-array', card: { password: 'deep' } } }],
+      };
+      const result = applyRedactions(obj, ['**.password']) as typeof obj;
+      expect(result.password).toBe('[REDACTED]');
+      expect(result.data.password).toBe('[REDACTED]');
+      expect(result.data.safe).toBe('keep');
+      expect(result.context[0]!.meta.password).toBe('[REDACTED]');
+      expect(result.context[0]!.meta.card.password).toBe('[REDACTED]');
+    });
+
+    test('globstar can target a nested path at any depth', () => {
+      const obj = { a: { card: { number: '4111' } }, b: { x: { card: { number: '5500' } } } };
+      const result = applyRedactions(obj, ['**.card.number']) as typeof obj;
+      expect(result.a.card.number).toBe('[REDACTED]');
+      expect(result.b.x.card.number).toBe('[REDACTED]');
+    });
+
+    test('does not mutate the original', () => {
+      const obj = { data: { token: 'secret' } };
+      applyRedactions(obj, ['**.token']);
+      expect(obj.data.token).toBe('secret');
+    });
+  });
 });

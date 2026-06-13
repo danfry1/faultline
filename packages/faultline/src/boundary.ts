@@ -71,7 +71,20 @@ function attachBoundaryMeta(target: Function, meta: BoundaryRuntimeMeta): void {
 
 /**
  * Defines an error boundary that maps errors from one domain to another.
- * The original error is always preserved as the cause.
+ *
+ * The original error is **always** preserved as the mapped error's `cause` — the
+ * boundary overwrites any cause a handler sets, so attach debugging context to
+ * the mapped error's `data`/`context` rather than its cause if you need it.
+ *
+ * **Throws on an unmapped tag.** If an error whose `_tag` is not in `map`
+ * reaches the boundary, it throws `System.BoundaryViolation` (with the original
+ * as cause). In fully-typed code this is unreachable — the `map` is exhaustive
+ * over the source group. It can only happen when an untyped/foreign error
+ * (an `any`, a cast, or an error from a layer outside the source group) flows
+ * in. Because a boundary usually sits at a transport edge, wrap it (or the
+ * handler that calls it) so a violation doesn't escape uncaught.
+ *
+ * @throws {AppError} `System.BoundaryViolation` when `error._tag` is not in `map`.
  *
  * @example
  * ```ts

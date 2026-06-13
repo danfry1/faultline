@@ -22,7 +22,7 @@ You can expect an initial acknowledgement within a few days. Once the issue is c
 
 faultline is a TypeScript error-handling library with **zero runtime dependencies** in its core package, which keeps its supply-chain surface small. Areas most relevant to security:
 
-- **Serialization / redaction** (`serializeError`, `configureErrors` redaction paths) — ensuring error payloads don't leak sensitive data. If you find a way redaction can be bypassed, that's in scope.
+- **Serialization / redaction** (`serializeError`, `configureErrors` redaction paths) — ensuring error payloads don't leak sensitive data. Note that `redactPaths` matches against the *serialized error structure* and a non-matching path is a silent no-op (it fails open). For sensitive keys, prefer the globstar form `**.password`, which redacts the key at any depth. If you find a way correctly-configured redaction can be bypassed, that's in scope.
 - **Deserialization** of untrusted serialized errors.
 
 Thanks for helping keep faultline and its users safe.
