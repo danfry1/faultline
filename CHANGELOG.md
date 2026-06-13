@@ -1,33 +1,8 @@
 # Changelog
 
-## [Unreleased]
-
-### Breaking changes
-
-- `TaskResult.toPromise()` removed. Use `.run()` instead — same signature.
-- TaskResult chain methods (`.map`, `.andThen`, `.catchTag`, etc.) now widen their error union to include `System.Cancelled`. If you exhaustively `match()` against a TaskResult, add a `'System.Cancelled'` handler or a `default` branch.
-- `TaskResult.fromPromise` return type now widens to include `System.Unexpected`. Factory rejections are no longer unhandled — they're caught and wrapped as `System.Unexpected` with the original throw preserved as `.cause`.
-
-### Added
-
-- TaskResult chain steps check `context.signal?.aborted` between every step. Aborting the signal mid-pipeline short-circuits the remaining steps to `System.Cancelled` instead of running them to completion.
-- README: "How faultline differs" section comparing faultline to neverthrow, Effect, and typed Error subclasses.
-- README: "When to use TaskResult vs Promise<Result>" decision guide.
-- README: explicit error-code escape hatch is now documented (the feature already existed; this fills a docs gap).
-
-### Added (Phase 4 — ESLint plugin)
-
-- ESLint plugin: torture-fixture test corpus exercising 11 real-world patterns (baselines, re-throws, generics, third-party throws, nested-try with closure-isolation case, await shapes, overloads with TypedPromise, re-exports with aliased imports, class methods, boundary handlers, variable throws).
-- ESLint plugin: `LIMITATIONS.md` documenting patterns the rules can't detect, including the design constraint that `uncovered-catch` requires declared error return types.
-- ESLint plugin: `throw-type-mismatch` now inspects all overload signatures, not just the first — overloaded functions are fully checked for transitive error propagation.
-- ESLint plugin: `throw-type-mismatch` reports `throw <identifier>` when the surrounding function declares a TypedPromise error type and the thrown variable's type has no resolvable `_tag`.
-- ESLint plugin: `uncovered-catch` no longer misattributes throws inside async closures (e.g., `setTimeout(async () => ...)`) to the outer try's catch.
-
-### Tests
-
-- Type-level assertion that explicit `code` values on `defineErrors` definitions are preserved as literal types.
-- Cancellation propagation tests for TaskResult chains (pre-abort, mid-chain abort, no abort).
-- `TaskResult.fromPromise` rejection-handling tests (Error and non-Error throws).
+> Versioning and per-package changelogs are managed with [Changesets](https://github.com/changesets/changesets).
+> Each published package keeps its own `CHANGELOG.md` (`packages/*/CHANGELOG.md`), generated at release time.
+> Unreleased changes live as files under [`.changeset/`](./.changeset). This file retains the pre-Changesets history.
 
 ## 0.1.0
 
