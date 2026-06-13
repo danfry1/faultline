@@ -1,6 +1,7 @@
 import { uncoveredCatch } from './rules/uncovered-catch';
 import { noRawThrow } from './rules/no-raw-throw';
 import { throwTypeMismatch } from './rules/throw-type-mismatch';
+import { version } from '../package.json';
 
 const rules = {
   'uncovered-catch': uncoveredCatch,
@@ -25,7 +26,7 @@ const rules = {
 const plugin = {
   meta: {
     name: 'eslint-plugin-faultline',
-    version: '0.1.0',
+    version,
   },
   rules,
   configs: {

@@ -15,8 +15,9 @@
   "files": ["dist", "README.md", "LICENSE"],
   "scripts": {
     "build": "tsdown src/index.ts --format cjs --dts",
+    "test": "bun test",
     "typecheck": "bunx tsc --noEmit",
-    "prepublishOnly": "bun run typecheck && bun run build"
+    "prepublishOnly": "bun run typecheck && bun run test && bun run build"
   },
   "publishConfig": { "access": "public" },
   "sideEffects": false,
