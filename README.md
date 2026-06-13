@@ -1,5 +1,10 @@
 # faultline
 
+[![npm](https://img.shields.io/npm/v/faultline.svg)](https://www.npmjs.com/package/faultline)
+[![CI](https://github.com/danfry1/faultline/actions/workflows/ci.yml/badge.svg)](https://github.com/danfry1/faultline/actions/workflows/ci.yml)
+[![license: MIT](https://img.shields.io/badge/license-MIT-blue.svg)](./LICENSE)
+[![zero dependencies](https://img.shields.io/badge/dependencies-0-brightgreen.svg)](https://www.npmjs.com/package/faultline?activeTab=dependencies)
+
 The incremental type-safe error system for TypeScript.
 
 Define your errors. Throw them like normal. The ESLint plugin tells you when you miss something. Adopt Result types and boundaries when you're ready — or don't. Either way, your app is better off.
@@ -462,7 +467,9 @@ npx faultline <command> [path] [--json]
 | `lint` | Detect raw throws and transport leaks |
 | `doctor` | Diagnose duplicate tags, missing boundary cases, and more |
 
-### VS Code Extension
+### VS Code Extension (experimental)
+
+> Not yet published to the Marketplace — build from `packages/faultline-vscode`.
 
 - Diagnostics for missing error coverage
 - Hover info showing throwable errors
@@ -554,6 +561,30 @@ TaskResult supports `.map()`, `.mapErr()`, `.andThen()`, `.catchTag()`, `.match(
 | `getErrorConfig()` | Read current config (frozen) |
 | `resetErrorConfig()` | Reset to defaults (useful in tests) |
 
+## Contributing
+
+This is a Bun monorepo:
+
+| Package | Published as | Status |
+|---|---|---|
+| [`packages/faultline`](./packages/faultline) | [`faultline`](https://www.npmjs.com/package/faultline) | stable |
+| [`packages/eslint-plugin-faultline`](./packages/eslint-plugin-faultline) | [`eslint-plugin-faultline`](https://www.npmjs.com/package/eslint-plugin-faultline) | stable |
+| [`packages/faultline-cli`](./packages/faultline-cli) | `faultline-cli` | beta |
+| [`packages/faultline-vscode`](./packages/faultline-vscode) | — | experimental |
+
+```bash
+bun install          # install workspace deps
+bun run typecheck    # type-check every package
+bun run test         # run all tests (core enforces a coverage gate)
+bun run lint         # oxlint
+bun run build        # build all packages
+```
+
+Releases are managed with [Changesets](https://github.com/changesets/changesets): include a changeset with any user-facing change (`bun run changeset`). See [CONTRIBUTING.md](./CONTRIBUTING.md) for the full workflow.
+
+- 🐛 Found a bug? [Open an issue](https://github.com/danfry1/faultline/issues).
+- 🔒 Security concern? See [SECURITY.md](./SECURITY.md) — please don't file public issues for vulnerabilities.
+
 ## License
 
-MIT
+MIT © Daniel Fry
