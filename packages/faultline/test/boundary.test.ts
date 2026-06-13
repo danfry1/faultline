@@ -3,6 +3,8 @@ import {
   defineErrors,
   defineBoundary,
   isAppError,
+  isErr,
+  isOk,
 } from '../src/index';
 
 const DomainErrors = defineErrors('Domain', {
@@ -63,6 +65,29 @@ describe('boundary', () => {
     expect(isAppError(mapped.cause)).toBe(true);
     if (isAppError(mapped.cause)) {
       expect(mapped.cause._tag).toBe('Domain.NotFound');
+    }
+  });
+
+  test('try() returns Ok(mapped) for a handled tag (no throw)', () => {
+    const result = boundary.try(DomainErrors.NotFound({ id: '42' }));
+    expect(isOk(result)).toBe(true);
+    if (isOk(result)) {
+      expect(result.value._tag).toBe('Http.NotFound');
+      expect(isAppError(result.value.cause) && result.value.cause._tag).toBe('Domain.NotFound');
+    }
+  });
+
+  test('try() returns Err(BoundaryViolation) for an unmapped tag instead of throwing', () => {
+    const fakeError = DomainErrors.NotFound({ id: '1' });
+    Object.defineProperty(fakeError, '_tag', { value: 'Unknown.Tag', writable: false });
+
+    let result!: ReturnType<typeof boundary.try>;
+    expect(() => { result = boundary.try(fakeError as never); }).not.toThrow();
+    expect(isErr(result)).toBe(true);
+    if (isErr(result)) {
+      expect(result.error._tag).toBe('System.BoundaryViolation');
+      expect((result.error.data as { fromTag: string }).fromTag).toBe('Unknown.Tag');
+      expect(isAppError(result.error.cause)).toBe(true);
     }
   });
 

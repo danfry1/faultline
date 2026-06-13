@@ -80,7 +80,7 @@ export { narrowError, isErrorTag, typedAsync } from './typed-promise';
 export type { TypedPromise } from './typed-promise';
 
 export { defineBoundary } from './boundary';
-export type { Boundary, BoundaryDefinition } from './boundary';
+export type { Boundary, BoundaryDefinition, BoundaryViolationError } from './boundary';
 
 export {
   SERIALIZED_RESULT_FORMAT_VERSION,

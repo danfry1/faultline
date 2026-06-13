@@ -372,7 +372,13 @@ const httpError = userToHttp(domainError);
 // Original error preserved as .cause, boundary context auto-added
 ```
 
-The original error is always set as the mapped error's `.cause` — even if a handler sets its own cause, the boundary overwrites it. If an error whose tag isn't in `map` reaches the boundary (only possible via an `any`, a cast, or an error from outside the source group — exhaustive typing prevents it otherwise), the boundary **throws** `System.BoundaryViolation`. Since boundaries usually sit at a transport edge, wrap the call so a violation can't escape uncaught.
+The original error is always set as the mapped error's `.cause` — even if a handler sets its own cause, the boundary overwrites it. If an error whose tag isn't in `map` reaches the boundary (only possible via an `any`, a cast, or an error from outside the source group — exhaustive typing prevents it otherwise), the boundary **throws** `System.BoundaryViolation`. Since boundaries usually sit at a transport edge, either wrap the call or use the non-throwing variant:
+
+```ts
+const result = userToHttp.try(domainError); // Result<HttpError, System.BoundaryViolation>
+if (isErr(result)) logUnmappedError(result.error);
+else respondWith(result.value);
+```
 
 ### Serialization
 
