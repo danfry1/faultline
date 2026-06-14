@@ -27,7 +27,9 @@ faultline is a TypeScript error-handling library with **zero runtime dependencie
 
 ## Supply-chain hardening
 
-This repo applies defense-in-depth against dependency-based supply-chain attacks:
+This repo follows my cross-project baseline, documented in full (with rationale) at
+[danfry1/standards → supply-chain.md](https://github.com/danfry1/standards/blob/main/supply-chain.md).
+In short, it applies defense-in-depth against dependency-based supply-chain attacks:
 
 - **Install-time release-age gate.** `bunfig.toml` sets `minimumReleaseAge` to 7 days, so installs refuse npm versions published more recently than that — long enough for most malicious releases to be caught and yanked.
 - **Update cooldown.** Dependabot (`.github/dependabot.yml`) holds update PRs until a version is at least 7 days old (all semver levels), mirroring the install-time gate.
