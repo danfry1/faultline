@@ -6,6 +6,20 @@ import {
   type TagsOf,
   ok, err, isOk, isErr,
 } from './result';
+import { SystemErrors } from './system-errors';
+
+type InferCancelled = ReturnType<typeof SystemErrors.Cancelled>;
+type InferUnexpected = ReturnType<typeof SystemErrors.Unexpected>;
+
+function checkCancelled(context: TaskContext): InferCancelled | undefined {
+  if (context.signal?.aborted) {
+    const reason = context.signal.reason;
+    return SystemErrors.Cancelled({
+      reason: typeof reason === 'string' ? reason : reason instanceof Error ? reason.message : 'aborted',
+    });
+  }
+  return undefined;
+}
 
 export interface TaskContext {
   readonly signal?: AbortSignal;
@@ -49,11 +63,21 @@ export class TaskResult<T, E extends AppError = never> {
     return TaskResult.from(async () => result);
   }
 
-  /** Creates a TaskResult from a factory that returns a Promise of Result. The factory is called on each `.run()`. */
+  /** Creates a TaskResult from a factory that returns a Promise of Result. The factory is called on each `.run()`. Rejections are captured as System.Unexpected with the thrown value as `.cause`. */
   static fromPromise<T, E extends AppError>(
     factory: () => Promise<Result<T, E>>,
-  ): TaskResult<T, E> {
-    return new TaskResult(async () => factory());
+  ): TaskResult<T, E | InferUnexpected> {
+    return new TaskResult(async () => {
+      try {
+        return await factory();
+      } catch (thrown) {
+        const message = thrown instanceof Error ? thrown.message : typeof thrown === 'string' ? thrown : 'Unexpected error';
+        const name = thrown instanceof Error ? thrown.name : undefined;
+        const unexpected = SystemErrors.Unexpected({ name, message });
+        // withCause returns AppError — narrowing to InferUnexpected is safe since we created it via SystemErrors.Unexpected
+        return err((thrown !== null && thrown !== undefined ? unexpected.withCause(thrown) : unexpected) as InferUnexpected) as Result<T, E | InferUnexpected>;
+      }
+    });
   }
 
   /** Creates a successful TaskResult. */
@@ -66,57 +90,82 @@ export class TaskResult<T, E extends AppError = never> {
     return TaskResult.fromResult(err(error));
   }
 
-  map<U>(fn: (value: T) => U | Promise<U>): TaskResult<U, E> {
-    return TaskResult.from(async (context) =>
-      this.executor(context).then(async (result) =>
-        isOk(result)
-          ? ok(await fn(result.value))
-          : // Covariance: ErrImpl<T,E> → Result<U,E> — error path, T is unused
-            (result as unknown as Result<U, E>),
-      ),
-    );
+  map<U>(fn: (value: T) => U | Promise<U>): TaskResult<U, E | InferCancelled> {
+    return TaskResult.from(async (context) => {
+      const preCancel = checkCancelled(context);
+      if (preCancel) return err(preCancel) as Result<U, E | InferCancelled>;
+
+      const result = await this.executor(context);
+
+      const postCancel = checkCancelled(context);
+      if (postCancel) return err(postCancel) as Result<U, E | InferCancelled>;
+
+      return isOk(result)
+        ? ok(await fn(result.value))
+        : (result as unknown as Result<U, E | InferCancelled>);
+    });
   }
 
+  // Note: if the upstream error union includes System.Cancelled, fn will receive it.
+  // Use catchTag('System.Cancelled', ...) upstream of mapErr to short-circuit before transformation.
   mapErr<E2 extends AppError>(
     fn: (error: E) => E2 | Promise<E2>,
-  ): TaskResult<T, E2> {
-    return TaskResult.from(async (context) =>
-      this.executor(context).then(async (result) =>
-        // Generic variance: err() returns ResultErr<never, E2>, widen to Result<T, E2>
-        isErr(result) ? (err(await fn(result.error)) as Result<T, E2>) : ok(result.value),
-      ),
-    );
+  ): TaskResult<T, E2 | InferCancelled> {
+    return TaskResult.from(async (context) => {
+      const preCancel = checkCancelled(context);
+      if (preCancel) return err(preCancel) as Result<T, E2 | InferCancelled>;
+
+      const result = await this.executor(context);
+
+      const postCancel = checkCancelled(context);
+      if (postCancel) return err(postCancel) as Result<T, E2 | InferCancelled>;
+
+      // Generic variance: err() returns ResultErr<never, E2>, widen to Result<T, E2 | InferCancelled>
+      return isErr(result) ? (err(await fn(result.error)) as Result<T, E2 | InferCancelled>) : ok(result.value);
+    });
   }
 
   andThen<U, E2 extends AppError>(
     fn: (value: T) => Result<U, E2> | Promise<Result<U, E2>>,
-  ): TaskResult<U, E | E2> {
-    return TaskResult.from(async (context) =>
-      this.executor(context).then(async (result) =>
-        isOk(result)
-          ? await fn(result.value)
-          : // Covariance: ErrImpl<T,E> → Result<U, E|E2> — error path, T is unused
-            (result as unknown as Result<U, E | E2>),
-      ),
-    );
+  ): TaskResult<U, E | E2 | InferCancelled> {
+    return TaskResult.from(async (context) => {
+      const preCancel = checkCancelled(context);
+      if (preCancel) return err(preCancel) as Result<U, E | E2 | InferCancelled>;
+
+      const result = await this.executor(context);
+
+      const postCancel = checkCancelled(context);
+      if (postCancel) return err(postCancel) as Result<U, E | E2 | InferCancelled>;
+
+      return isOk(result)
+        ? await fn(result.value)
+        : // Covariance: ErrImpl<T,E> → Result<U, E|E2|InferCancelled> — error path, T is unused
+          (result as unknown as Result<U, E | E2 | InferCancelled>);
+    });
   }
 
   andThenTask<U, E2 extends AppError>(
     fn:
       | ((value: T) => TaskResult<U, E2>)
       | ((value: T) => Promise<TaskResult<U, E2>>),
-  ): TaskResult<U, E | E2> {
-    return TaskResult.from(async (context) =>
-      this.executor(context).then(async (result) => {
-        if (isErr(result)) {
-          // Covariance: ErrImpl<T,E> → Result<U, E|E2> — error path, T is unused
-          return result as unknown as Result<U, E | E2>;
-        }
+  ): TaskResult<U, E | E2 | InferCancelled> {
+    return TaskResult.from(async (context) => {
+      const preCancel = checkCancelled(context);
+      if (preCancel) return err(preCancel) as Result<U, E | E2 | InferCancelled>;
 
-        const nextTask = await fn(result.value);
-        return nextTask.run(context);
-      }),
-    );
+      const result = await this.executor(context);
+
+      const postCancel = checkCancelled(context);
+      if (postCancel) return err(postCancel) as Result<U, E | E2 | InferCancelled>;
+
+      if (isErr(result)) {
+        // Covariance: ErrImpl<T,E> → Result<U, E|E2|InferCancelled> — error path, T is unused
+        return result as unknown as Result<U, E | E2 | InferCancelled>;
+      }
+
+      const nextTask = await fn(result.value);
+      return nextTask.run(context);
+    });
   }
 
   catchTag<Tag extends TagsOf<E>, U = T, E2 extends AppError = never>(
@@ -127,21 +176,27 @@ export class TaskResult<T, E extends AppError = never> {
       | Result<U, E2>
       | TaskResult<U, E2>
       | Promise<Result<U, E2> | TaskResult<U, E2>>,
-  ): TaskResult<T | U, Exclude<E, { _tag: Tag }> | E2> {
-    return TaskResult.from(async (context) =>
-      this.executor(context).then(async (result) => {
-        if (!isErr(result) || result.error._tag !== tag) {
-          // Covariance: error doesn't match tag, so Exclude is safe; widen T to T|U
-          return result as unknown as Result<T | U, Exclude<E, { _tag: Tag }> | E2>;
-        }
+  ): TaskResult<T | U, Exclude<E, { _tag: Tag }> | E2 | InferCancelled> {
+    return TaskResult.from(async (context) => {
+      const preCancel = checkCancelled(context);
+      if (preCancel) return err(preCancel) as Result<T | U, Exclude<E, { _tag: Tag }> | E2 | InferCancelled>;
 
-        return resolveTaskLike(
-          // Discriminated union narrowing: runtime _tag check guarantees Extract<E, {_tag: Tag}>
-          handler(result.error as Extract<E, { _tag: Tag }>),
-          context,
-        );
-      }),
-    );
+      const result = await this.executor(context);
+
+      const postCancel = checkCancelled(context);
+      if (postCancel) return err(postCancel) as Result<T | U, Exclude<E, { _tag: Tag }> | E2 | InferCancelled>;
+
+      if (!isErr(result) || result.error._tag !== tag) {
+        // Covariance: error doesn't match tag, so Exclude is safe; widen T to T|U
+        return result as unknown as Result<T | U, Exclude<E, { _tag: Tag }> | E2 | InferCancelled>;
+      }
+
+      return resolveTaskLike(
+        // Discriminated union narrowing: runtime _tag check guarantees Extract<E, {_tag: Tag}>
+        handler(result.error as Extract<E, { _tag: Tag }>),
+        context,
+      );
+    });
   }
 
   async match<R>(
@@ -153,41 +208,57 @@ export class TaskResult<T, E extends AppError = never> {
     return result.match(handlers as ExhaustiveMatchHandlers<T, E, R | Promise<R>>);
   }
 
-  tap(fn: (value: T) => void | Promise<void>): TaskResult<T, E> {
-    return TaskResult.from(async (context) =>
-      this.executor(context).then(async (result) => {
-        if (isOk(result)) {
-          await fn(result.value);
-        }
+  tap(fn: (value: T) => void | Promise<void>): TaskResult<T, E | InferCancelled> {
+    return TaskResult.from(async (context) => {
+      const preCancel = checkCancelled(context);
+      if (preCancel) return err(preCancel) as Result<T, E | InferCancelled>;
 
-        return result;
-      }),
-    );
+      const result = await this.executor(context);
+
+      const postCancel = checkCancelled(context);
+      if (postCancel) return err(postCancel) as Result<T, E | InferCancelled>;
+
+      if (isOk(result)) {
+        await fn(result.value);
+      }
+
+      return result;
+    });
   }
 
-  tapError(fn: (error: E) => void | Promise<void>): TaskResult<T, E> {
-    return TaskResult.from(async (context) =>
-      this.executor(context).then(async (result) => {
-        if (isErr(result)) {
-          await fn(result.error);
-        }
+  tapError(fn: (error: E) => void | Promise<void>): TaskResult<T, E | InferCancelled> {
+    return TaskResult.from(async (context) => {
+      const preCancel = checkCancelled(context);
+      if (preCancel) return err(preCancel) as Result<T, E | InferCancelled>;
 
-        return result;
-      }),
-    );
+      const result = await this.executor(context);
+
+      const postCancel = checkCancelled(context);
+      if (postCancel) return err(postCancel) as Result<T, E | InferCancelled>;
+
+      if (isErr(result)) {
+        await fn(result.error);
+      }
+
+      return result;
+    });
   }
 
-  withContext(frame: ContextFrame): TaskResult<T, E> {
-    return TaskResult.from(async (context) =>
-      this.executor(context).then((result) => result.withContext(frame)),
-    );
+  withContext(frame: ContextFrame): TaskResult<T, E | InferCancelled> {
+    return TaskResult.from(async (context) => {
+      const preCancel = checkCancelled(context);
+      if (preCancel) return err(preCancel) as Result<T, E | InferCancelled>;
+
+      const result = await this.executor(context);
+
+      const postCancel = checkCancelled(context);
+      if (postCancel) return err(postCancel) as Result<T, E | InferCancelled>;
+
+      return result.withContext(frame);
+    });
   }
 
   run(options: TaskRunOptions = {}): Promise<Result<T, E>> {
     return this.executor(options);
-  }
-
-  toPromise(options: TaskRunOptions = {}): Promise<Result<T, E>> {
-    return this.run(options);
   }
 }

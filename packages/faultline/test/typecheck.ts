@@ -171,3 +171,41 @@ type _partialMatched = Expect<Equal<typeof partialMatched, string>>;
 
 const empty = all([] as const);
 const _emptyAll: Result<readonly [], never> = empty;
+
+// === Explicit code preservation ===
+const ExplicitCodeErrors = defineErrors('User', {
+  Unauthorized: { code: 'ERR_AUTH_401', status: 401 },
+  NotFound: { status: 404 },
+});
+
+// Explicit code is preserved as a literal type
+type _ExplicitCodeLiteral = Expect<
+  Equal<ReturnType<typeof ExplicitCodeErrors.Unauthorized>['code'], 'ERR_AUTH_401'>
+>;
+
+// Auto-generated code is also preserved as a literal type
+type _AutoCodeLiteral = Expect<
+  Equal<ReturnType<typeof ExplicitCodeErrors.NotFound>['code'], 'USER_NOT_FOUND'>
+>;
+
+// === Cancellation widening ===
+type CancelledTag = ReturnType<typeof SystemErrors.Cancelled>['_tag'];
+type _CancelledTagIsCorrect = Expect<Equal<CancelledTag, 'System.Cancelled'>>;
+
+// After .map, the error union must include System.Cancelled
+const _baseTask: TaskResult<number, never> = TaskResult.ok(1);
+const _mappedTask = _baseTask.map((v) => v + 1);
+type MappedError = Awaited<ReturnType<typeof _mappedTask.run>> extends Result<unknown, infer E> ? E : never;
+
+// MappedError should be a union containing System.Cancelled (the AppError instance)
+type _IncludesCancelled = Expect<
+  Equal<MappedError extends { _tag: 'System.Cancelled' } ? true : never, true>
+>;
+
+// andThenTask also widens to include System.Cancelled
+const _innerTask: TaskResult<number, never> = TaskResult.ok(2);
+const _chainedTask = _baseTask.andThenTask(() => _innerTask);
+type ChainedError = Awaited<ReturnType<typeof _chainedTask.run>> extends Result<unknown, infer E> ? E : never;
+type _ChainedIncludesCancelled = Expect<
+  Equal<ChainedError extends { _tag: 'System.Cancelled' } ? true : never, true>
+>;

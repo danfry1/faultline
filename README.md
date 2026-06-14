@@ -1,6 +1,11 @@
 # faultline
 
-The complete type-safe error system for TypeScript.
+[![npm](https://img.shields.io/npm/v/faultline.svg)](https://www.npmjs.com/package/faultline)
+[![CI](https://github.com/danfry1/faultline/actions/workflows/ci.yml/badge.svg)](https://github.com/danfry1/faultline/actions/workflows/ci.yml)
+[![license: MIT](https://img.shields.io/badge/license-MIT-blue.svg)](./LICENSE)
+[![zero dependencies](https://img.shields.io/badge/dependencies-0-brightgreen.svg)](https://www.npmjs.com/package/faultline?activeTab=dependencies)
+
+The incremental type-safe error system for TypeScript.
 
 Define your errors. Throw them like normal. The ESLint plugin tells you when you miss something. Adopt Result types and boundaries when you're ready — or don't. Either way, your app is better off.
 
@@ -24,6 +29,16 @@ throw UserErrors.NotFound({ userId: '42' });
 TypeScript tells you the shape of your data, but not the shape of your failures. Catch blocks give you `unknown`. Hand-rolled error classes drift out of sync. A new error type gets added and nothing tells you to handle it.
 
 Faultline fixes this incrementally. You don't need to rewrite your app. You don't need to learn a new paradigm. Start with what you already know — `throw` and `catch` — and let the tooling guide you forward.
+
+## How faultline differs
+
+**vs. neverthrow, ts-results, true-myth.** These are solid Result-type libraries. Faultline's difference is that it doesn't ask you to convert your throws first. Stage 1 — typed factories plus the ESLint plugin — delivers most of the value while your code keeps using `throw` and `catch`. Result types are there when you want them at Stage 3.
+
+**vs. Effect.** Effect is more powerful and more mature. Faultline is narrowly focused on errors: no effect system, no runtime, no scheduler. Just typed errors plus optional Results. The learning curve is hours, not weeks.
+
+**vs. typed `Error` subclasses.** Custom Error classes work. Faultline derives consistent tags, codes, status values, and serialization from a single declaration, ships an ESLint plugin that catches drift, and gives you a smooth path to Result types if you want them later.
+
+**vs. the `?=` proposal.** You may have seen the TC39 [Safe Assignment Operator (`?=`) proposal](https://github.com/nicolo-ribaudo/tc39-proposal-safe-assignment-operator) or libraries that return `[error, value]` tuples. Faultline uses discriminated unions instead because: (1) TypeScript narrows discriminated unions more reliably than tuple truthiness — after `if (isErr(result))`, the compiler *guarantees* the error type; (2) the `?=` proposal doesn't type the error — it's still `unknown`; (3) a single `result` value composes with `match()`, returns cleanly from functions, and chains methods. If you prefer tuple syntax, a one-line helper gets you there and your errors stay fully typed (see "Why not `[err, value]` tuples?" below).
 
 ## Install
 
@@ -61,6 +76,23 @@ const UserErrors = defineErrors('User', {
 Tags and codes are auto-generated:
 - `UserErrors.NotFound(...)._tag` → `'User.NotFound'`
 - `UserErrors.NotFound(...).code` → `'USER_NOT_FOUND'`
+
+**Codes default to auto-generated `SCREAMING_SNAKE_CASE` from the tag.** If you have an existing error-code convention, pass an explicit `code` — it's preserved at the type level too, so downstream consumers see the literal string:
+
+```ts
+const UserErrors = defineErrors('User', {
+  // Auto-generated: code === 'USER_NOT_FOUND'
+  NotFound: {
+    status: 404,
+    message: (data: { userId: string }) => `User ${data.userId} not found`,
+  },
+  // Explicit: code === 'ERR_AUTH_401' (literal type preserved)
+  Unauthorized: {
+    code: 'ERR_AUTH_401',
+    status: 401,
+  },
+});
+```
 
 **Throw them like you already do:**
 
@@ -235,21 +267,7 @@ This errors on any raw `throw` and any uncovered catch — pushing you toward Re
 
 ### Why not `[err, value]` tuples?
 
-You may have seen the TC39 [Safe Assignment Operator (`?=`) proposal](https://github.com/nicolo-ribaudo/tc39-proposal-safe-assignment-operator) or libraries that return `[error, value]` tuples:
-
-```ts
-const [err, user] = safeTry(() => getUser(id));
-```
-
-We considered this but chose discriminated unions (`result._type`) for a few reasons:
-
-1. **TypeScript narrows discriminated unions more reliably than tuple truthiness.** After `if (isErr(result))`, the compiler *guarantees* `result.error` is typed. With `if (err)`, you're relying on truthiness narrowing — which works but is a weaker contract and easier to get backwards.
-
-2. **The `?=` proposal doesn't type the error.** It's sugar for try/catch — `err` is still `unknown`. Faultline's value is that errors carry typed data, tags, and codes. Even if `?=` lands, you'd still want faultline underneath.
-
-3. **A single `result` value composes better.** You can pass it to `match()`, return it from functions, or chain methods on it. Two separate variables can't do that.
-
-If you prefer the tuple syntax, a one-line helper gets you there — and your errors stay fully typed:
+We chose discriminated unions over tuples (see "How faultline differs" above). If you prefer the tuple syntax, a one-line helper gets you there — and your errors stay fully typed:
 
 ```ts
 function tryResult<T, E extends AppError>(
@@ -300,6 +318,33 @@ const result = attempt(() => JSON.parse(raw));
 // Result<unknown, System.Unexpected>
 ```
 
+### When to use TaskResult vs `Promise<Result>`
+
+Reach for `TaskResult` when you need one of:
+
+- **Cancellation through a pipeline.** Pass an `AbortSignal` to `.run({ signal })` and every chained step checks it between steps. Abort once, and the *remaining* steps short-circuit to `System.Cancelled`. Cancellation is cooperative: a step already in flight runs to completion, and the underlying work only stops if you thread `signal` into it (e.g. `fetch(url, { signal })`). It stops *subsequent* steps and stops you *waiting* — it does not preempt work in progress.
+- **Context frames across async steps.** Use `.withContext({ ... })` to attach observability metadata that survives composition.
+- **Lazy composition.** Build the pipeline, hand it off, run it later. Plain Promises run eagerly the moment you construct them.
+
+Otherwise, `Promise<Result>` is fine. It composes with `await` and plain `if (isErr(result))` checks just like the synchronous Stage 3 examples.
+
+```ts
+// Promise<Result> — perfectly good for most async work
+async function getUser(id: string): Promise<Result<User, User.NotFound>> {
+  const user = await db.users.find(id);
+  if (!user) return err(UserErrors.NotFound({ userId: id }));
+  return ok(user);
+}
+
+// TaskResult — when you need cancellation or context propagation
+const task = attemptAsync(
+  async (signal) => fetch(`/api/users/${id}`, { signal }),
+  { mapUnknown: () => UserErrors.NotFound({ userId: id }) },
+).withContext({ layer: 'service', operation: 'getUser' });
+
+const result = await task.run({ signal: controller.signal });
+```
+
 ### Error Boundaries
 
 Map domain errors to HTTP errors (or any other layer) with `defineBoundary`. The mapping is exhaustive — add a new domain error and the compiler tells you to add a handler.
@@ -325,6 +370,14 @@ const userToHttp = defineBoundary({
 
 const httpError = userToHttp(domainError);
 // Original error preserved as .cause, boundary context auto-added
+```
+
+The original error is always set as the mapped error's `.cause` — even if a handler sets its own cause, the boundary overwrites it. If an error whose tag isn't in `map` reaches the boundary (only possible via an `any`, a cast, or an error from outside the source group — exhaustive typing prevents it otherwise), the boundary **throws** `System.BoundaryViolation`. Since boundaries usually sit at a transport edge, either wrap the call or use the non-throwing variant:
+
+```ts
+const result = userToHttp.try(domainError); // Result<HttpError, System.BoundaryViolation>
+if (isErr(result)) logUnmappedError(result.error);
+else respondWith(result.value);
 ```
 
 ### Serialization
@@ -365,13 +418,21 @@ import { configureErrors } from 'faultline';
 configureErrors({
   captureStack: false, // disable in production for performance
   redactPaths: [
-    'data.password',
-    'data.token',
-    'context.*.meta.apiKey', // wildcards supported
+    '**.password',           // ** = redact this key at ANY depth (recommended)
+    '**.token',
+    'data.ssn',              // exact path, rooted at the serialized error
+    'context.*.meta.apiKey', // * = one wildcard level
   ],
 });
 // serializeError() now replaces matched paths with '[REDACTED]'
 ```
+
+> **Important:** paths are matched against the *serialized error* (whose root has
+> `data`, `context`, `cause`, …), not against your raw value. A path that matches
+> nothing is a silent no-op — so for sensitive keys prefer the globstar form
+> `**.password`, which redacts that key wherever it appears, over a brittle exact
+> path like `password` (which would match only a top-level key and silently leak
+> anything nested).
 
 Stack capture defaults to `true` in development, `false` when `NODE_ENV=production`.
 
@@ -407,6 +468,8 @@ Three preset configs matching the adoption stages:
 | `faultline/uncovered-catch` | Ensure catch blocks handle all throwable error types |
 | `faultline/throw-type-mismatch` | Detect drift between thrown errors and TypedPromise declarations |
 
+**Known limitations:** see [`eslint-plugin-faultline/LIMITATIONS.md`](./packages/eslint-plugin-faultline/LIMITATIONS.md) for patterns the rules can't currently detect.
+
 ### CLI
 
 ```bash
@@ -420,7 +483,9 @@ npx faultline <command> [path] [--json]
 | `lint` | Detect raw throws and transport leaks |
 | `doctor` | Diagnose duplicate tags, missing boundary cases, and more |
 
-### VS Code Extension
+### VS Code Extension (experimental)
+
+> Not yet published to the Marketplace — build from `packages/faultline-vscode`.
 
 - Diagnostics for missing error coverage
 - Hover info showing throwable errors
@@ -512,6 +577,30 @@ TaskResult supports `.map()`, `.mapErr()`, `.andThen()`, `.catchTag()`, `.match(
 | `getErrorConfig()` | Read current config (frozen) |
 | `resetErrorConfig()` | Reset to defaults (useful in tests) |
 
+## Contributing
+
+This is a Bun monorepo:
+
+| Package | Published as | Status |
+|---|---|---|
+| [`packages/faultline`](./packages/faultline) | [`faultline`](https://www.npmjs.com/package/faultline) | stable |
+| [`packages/eslint-plugin-faultline`](./packages/eslint-plugin-faultline) | [`eslint-plugin-faultline`](https://www.npmjs.com/package/eslint-plugin-faultline) | stable |
+| [`packages/faultline-cli`](./packages/faultline-cli) | `faultline-cli` | beta |
+| [`packages/faultline-vscode`](./packages/faultline-vscode) | — | experimental |
+
+```bash
+bun install          # install workspace deps
+bun run typecheck    # type-check every package
+bun run test         # run all tests (core enforces a coverage gate)
+bun run lint         # oxlint
+bun run build        # build all packages
+```
+
+Releases are managed with [Changesets](https://github.com/changesets/changesets): include a changeset with any user-facing change (`bun run changeset`). See [CONTRIBUTING.md](./CONTRIBUTING.md) for the full workflow.
+
+- 🐛 Found a bug? [Open an issue](https://github.com/danfry1/faultline/issues).
+- 🔒 Security concern? See [SECURITY.md](./SECURITY.md) — please don't file public issues for vulnerabilities.
+
 ## License
 
-MIT
+MIT © Daniel Fry

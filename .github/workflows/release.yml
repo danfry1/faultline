@@ -1,16 +1,21 @@
 name: Release
 
+# Changesets flow:
+# - A push to main with pending changesets opens (or updates) a "Version Packages" PR.
+# - Merging that PR bumps versions + changelogs, then this workflow publishes to npm.
 on:
   push:
-    tags: ['v*', 'eslint-plugin-v*']
+    branches: [main]
+
+concurrency: ${{ github.workflow }}-${{ github.ref }}
 
 permissions:
   contents: write
+  pull-requests: write
   id-token: write
 
 jobs:
-  publish-core:
-    if: startsWith(github.ref, 'refs/tags/v') && !startsWith(github.ref, 'refs/tags/eslint-plugin-v')
+  release:
     runs-on: ubuntu-latest
     environment: npm
     steps:
@@ -24,43 +29,20 @@ jobs:
       - run: bun install --frozen-lockfile
       - run: bun run typecheck
       - run: bun run test
-      - name: Build
-        run: bun --filter 'faultline' build
-      - name: Validate package exports
-        working-directory: packages/faultline
-        run: npm pack && npx @arethetypeswrong/cli ./faultline-*.tgz --ignore-rules no-resolution
-      - name: Publish to npm
-        working-directory: packages/faultline
-        run: npm publish --provenance --access public
+      - name: Validate package exports (faultline)
+        run: |
+          bun --filter 'faultline' build
+          cd packages/faultline
+          npm pack
+          npx @arethetypeswrong/cli ./faultline-*.tgz --ignore-rules no-resolution
+      - name: Create Release PR or Publish
+        uses: changesets/action@v1
+        with:
+          version: bun run version-packages
+          publish: bun run release
+          commit: 'chore: version packages'
+          title: 'chore: version packages'
         env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
-      - name: Create GitHub Release
-        uses: softprops/action-gh-release@v2
-        with:
-          generate_release_notes: true
-
-  publish-eslint-plugin:
-    if: startsWith(github.ref, 'refs/tags/eslint-plugin-v')
-    runs-on: ubuntu-latest
-    environment: npm
-    steps:
-      - uses: actions/checkout@v4
-      - uses: oven-sh/setup-bun@v2
-      - uses: actions/setup-node@v4
-        with:
-          node-version: 22
-          registry-url: https://registry.npmjs.org
-      - run: npm i -g npm@latest
-      - run: bun install --frozen-lockfile
-      - run: bun run typecheck
-      - name: Build
-        run: bun --filter 'eslint-plugin-faultline' build
-      - name: Publish to npm
-        working-directory: packages/eslint-plugin-faultline
-        run: npm publish --provenance --access public
-        env:
-          NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
-      - name: Create GitHub Release
-        uses: softprops/action-gh-release@v2
-        with:
-          generate_release_notes: true
+          NPM_CONFIG_PROVENANCE: 'true'

@@ -1,0 +1,54 @@
+name: Bug report
+description: Report a bug in a faultline package
+labels: [bug]
+body:
+  - type: dropdown
+    id: package
+    attributes:
+      label: Package
+      description: Which package is affected?
+      options:
+        - faultline
+        - eslint-plugin-faultline
+        - faultline-cli
+        - faultline-vscode
+        - not sure
+    validations:
+      required: true
+  - type: input
+    id: version
+    attributes:
+      label: Package version
+      placeholder: e.g. 0.2.0
+    validations:
+      required: true
+  - type: textarea
+    id: what-happened
+    attributes:
+      label: What happened?
+      description: A clear description of the bug and what you expected instead.
+    validations:
+      required: true
+  - type: textarea
+    id: repro
+    attributes:
+      label: Minimal reproduction
+      description: The smallest code snippet (or repo link) that reproduces the issue. For ESLint rules, include the source and your ESLint config.
+      render: ts
+    validations:
+      required: true
+  - type: input
+    id: env
+    attributes:
+      label: Environment
+      description: Node/Bun version, OS, TypeScript version, ESLint version (if relevant).
+      placeholder: e.g. Node 20.11, macOS 14, TypeScript 5.9
+    validations:
+      required: false
+  - type: checkboxes
+    id: checks
+    attributes:
+      label: Checks
+      options:
+        - label: For an ESLint false negative/positive, I checked LIMITATIONS.md first.
+          required: false

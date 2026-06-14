@@ -3,6 +3,7 @@
   "displayName": "Faultline",
   "description": "Type-safe error handling diagnostics for TypeScript — surfaces missing error coverage, shows throwable errors on hover, and provides quick fixes.",
   "version": "0.1.0",
+  "private": true,
   "publisher": "faultline",
   "engines": {
     "vscode": "^1.85.0"

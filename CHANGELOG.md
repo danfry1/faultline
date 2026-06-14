@@ -1,5 +1,9 @@
 # Changelog
 
+> Versioning and per-package changelogs are managed with [Changesets](https://github.com/changesets/changesets).
+> Each published package keeps its own `CHANGELOG.md` (`packages/*/CHANGELOG.md`), generated at release time.
+> Unreleased changes live as files under [`.changeset/`](./.changeset). This file retains the pre-Changesets history.
+
 ## 0.1.0
 
 Initial release.

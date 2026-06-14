@@ -118,3 +118,86 @@ describe('TaskResult.withContext', () => {
     }
   });
 });
+
+describe('TaskResult.fromPromise rejection handling', () => {
+  test('rejected factory becomes System.Unexpected with cause preserved', async () => {
+    const original = new Error('boom');
+    const task = TaskResult.fromPromise(async () => {
+      throw original;
+    });
+    const result = await task.run();
+
+    expect(isErr(result)).toBe(true);
+    if (isErr(result)) {
+      expect(result.error._tag).toBe('System.Unexpected');
+      expect(result.error.cause).toBe(original);
+    }
+  });
+
+  test('non-Error throws are still wrapped as System.Unexpected', async () => {
+    const task = TaskResult.fromPromise(async () => {
+      throw 'string-thrown-instead-of-error';
+    });
+    const result = await task.run();
+
+    expect(isErr(result)).toBe(true);
+    if (isErr(result)) {
+      expect(result.error._tag).toBe('System.Unexpected');
+      expect(result.error.cause).toBe('string-thrown-instead-of-error');
+    }
+  });
+
+  test('successful factory passes through unchanged', async () => {
+    const task = TaskResult.fromPromise(async () => ok(42));
+    const result = await task.run();
+
+    expect(isOk(result)).toBe(true);
+    if (isOk(result)) {
+      expect(result.value).toBe(42);
+    }
+  });
+});
+
+describe('TaskResult cancellation propagation', () => {
+  test('aborting mid-chain short-circuits subsequent steps', async () => {
+    const stepsRun: number[] = [];
+    const controller = new AbortController();
+
+    const task = TaskResult.ok(1)
+      .map((v) => { stepsRun.push(1); return v + 1; })
+      .map((v) => { stepsRun.push(2); controller.abort(); return v + 1; })
+      .map((v) => { stepsRun.push(3); return v + 1; })
+      .map((v) => { stepsRun.push(4); return v + 1; });
+
+    const result = await task.run({ signal: controller.signal });
+
+    expect(isErr(result)).toBe(true);
+    if (isErr(result)) {
+      expect(result.error._tag).toBe('System.Cancelled');
+    }
+    // Steps 1 and 2 ran; 3 and 4 must not have
+    expect(stepsRun).toEqual([1, 2]);
+  });
+
+  test('no cancellation when signal never aborts', async () => {
+    const controller = new AbortController();
+    const task = TaskResult.ok(1).map((v) => v + 1).map((v) => v + 1);
+    const result = await task.run({ signal: controller.signal });
+
+    expect(isOk(result)).toBe(true);
+    if (isOk(result)) {
+      expect(result.value).toBe(3);
+    }
+  });
+
+  test('pre-aborted signal short-circuits before first step', async () => {
+    const controller = new AbortController();
+    controller.abort();
+    let ran = false;
+    const task = TaskResult.ok(1).map(() => { ran = true; return 2; });
+    const result = await task.run({ signal: controller.signal });
+
+    expect(isErr(result)).toBe(true);
+    expect(ran).toBe(false);
+  });
+});

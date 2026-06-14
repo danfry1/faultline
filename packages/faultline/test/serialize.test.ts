@@ -210,6 +210,27 @@ describe('Result toJSON format', () => {
   });
 });
 
+describe('AppError toJSON format', () => {
+  test('JSON.stringify on a standalone AppError uses toJSON (no Result wrapper)', () => {
+    const error = TestErrors.NotFound({ id: '7' }).withCause(new TypeError('bad'));
+    const json = JSON.parse(JSON.stringify(error));
+
+    expect(json._format).toBe('faultline');
+    expect(json._version).toBe(1);
+    expect(json._tag).toBe('Test.NotFound');
+    expect(json.data.id).toBe('7');
+    // cause is recursively serialized, not dropped to [Object]/[Function]
+    expect(json.cause).toBeDefined();
+  });
+
+  test('nesting an AppError inside another object still serializes via toJSON', () => {
+    const error = TestErrors.NotFound({ id: '9' });
+    const json = JSON.parse(JSON.stringify({ wrapped: error }));
+    expect(json.wrapped._format).toBe('faultline');
+    expect(json.wrapped._tag).toBe('Test.NotFound');
+  });
+});
+
 describe('JSON safety', () => {
   test('serializeError handles circular data in AppError', () => {
     const data: Record<string, unknown> = { id: '1' };

@@ -1,0 +1,8 @@
+blank_issues_enabled: false
+contact_links:
+  - name: Security vulnerability
+    url: https://github.com/danfry1/faultline/security/advisories/new
+    about: Please report security issues privately, not as public issues. See SECURITY.md.
+  - name: Question / discussion
+    url: https://github.com/danfry1/faultline/discussions
+    about: Ask questions and discuss ideas here.

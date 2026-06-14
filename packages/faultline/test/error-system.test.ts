@@ -570,3 +570,28 @@ describe('attempt overloads', () => {
     }
   });
 });
+
+describe('defineErrors with explicit codes', () => {
+  test('preserves explicit code at runtime', () => {
+    const errors = defineErrors('User', {
+      Unauthorized: { code: 'ERR_AUTH_401', status: 401 },
+    });
+    expect(errors.Unauthorized().code).toBe('ERR_AUTH_401');
+  });
+
+  test('falls back to auto-generated code when not provided', () => {
+    const errors = defineErrors('User', {
+      NotFound: { status: 404 },
+    });
+    expect(errors.NotFound().code).toBe('USER_NOT_FOUND');
+  });
+
+  test('mixing explicit and auto-generated codes in one group', () => {
+    const errors = defineErrors('User', {
+      NotFound: { status: 404 },
+      Unauthorized: { code: 'ERR_AUTH_401', status: 401 },
+    });
+    expect(errors.NotFound().code).toBe('USER_NOT_FOUND');
+    expect(errors.Unauthorized().code).toBe('ERR_AUTH_401');
+  });
+});
