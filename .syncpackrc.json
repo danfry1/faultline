@@ -1,0 +1,21 @@
+{
+  "versionGroups": [
+    {
+      "label": "Peer deps intentionally use wide ranges; dev pins the version we test against, so cross-instance version differences are expected.",
+      "dependencies": ["eslint", "typescript", "@typescript-eslint/utils"],
+      "isIgnored": true
+    }
+  ],
+  "semverGroups": [
+    {
+      "label": "devDependencies are pinned to exact versions (supply-chain hardening)",
+      "dependencyTypes": ["dev"],
+      "range": ""
+    },
+    {
+      "label": "runtime + peer deps keep author-defined ranges so consumers can dedupe",
+      "dependencyTypes": ["prod", "peer"],
+      "isIgnored": true
+    }
+  ]
+}
