@@ -2,48 +2,156 @@ name: Release
 
 # Changesets flow:
 # - A push to main with pending changesets opens (or updates) a "Version Packages" PR.
-# - Merging that PR bumps versions + changelogs, then this workflow publishes to npm.
+# - Merging that PR bumps versions + changelogs. The next run packs every public
+#   package whose release tag does not exist yet and stages it to npm through
+#   trusted publishing (OIDC). Nothing is installable until a maintainer approves
+#   it with 2FA: `npm stage approve <id>` (or on npmjs.com). Inspect first with
+#   `npm stage download <id>`.
+#
+# Jobs are split so the OIDC token never shares a job with project code:
+# `build` runs tests and packs tarballs without it; `publish` only stages the
+# packed tarballs; `tag` creates the release tags and GitHub releases.
 on:
   push:
     branches: [main]
 
 concurrency: ${{ github.workflow }}-${{ github.ref }}
 
-permissions:
-  contents: write
-  pull-requests: write
-  id-token: write
+permissions: read-all
 
 jobs:
-  release:
+  version:
     runs-on: ubuntu-latest
-    environment: npm
+    timeout-minutes: 15
+    permissions:
+      contents: write
+      pull-requests: write
+    outputs:
+      has-changesets: ${{ steps.changesets.outputs.hasChangesets }}
     steps:
+      # changesets/action pushes the release branch with the checkout's credentials.
       - uses: actions/checkout@df4cb1c069e1874edd31b4311f1884172cec0e10 # v6
       - uses: oven-sh/setup-bun@0c5077e51419868618aeaa5fe8019c62421857d6 # v2
-      - uses: actions/setup-node@48b55a011bda9f5d6aeb4c2d9c7362e8dae4041e # v6.4.0
-        with:
-          node-version: 22
-          registry-url: https://registry.npmjs.org
-      - run: npm i -g npm@latest
       - run: bun install --frozen-lockfile
-      - run: bun run lint:deps
-      - run: bun run typecheck
-      - run: bun run test
-      - name: Validate package exports (faultline)
-        run: |
-          bun --filter 'faultline' build
-          cd packages/faultline
-          npm pack
-          npx @arethetypeswrong/cli ./faultline-*.tgz --ignore-rules no-resolution
-      - name: Create Release PR or Publish
+      - name: Create or update the Version Packages PR
+        id: changesets
         uses: changesets/action@a45c4d594aa4e2c509dc14a9f2b3b67ba3780d0d # v1
         with:
           version: bun run version-packages
-          publish: bun run release
           commit: 'chore: version packages'
           title: 'chore: version packages'
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-          NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
-          NPM_CONFIG_PROVENANCE: 'true'
+
+  build:
+    needs: version
+    if: needs.version.outputs.has-changesets == 'false'
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    permissions:
+      contents: read
+    outputs:
+      releases: ${{ steps.pack.outputs.releases }}
+    steps:
+      - uses: actions/checkout@df4cb1c069e1874edd31b4311f1884172cec0e10 # v6
+        with:
+          persist-credentials: false
+      - uses: oven-sh/setup-bun@0c5077e51419868618aeaa5fe8019c62421857d6 # v2
+      - uses: actions/setup-node@48b55a011bda9f5d6aeb4c2d9c7362e8dae4041e # v6.4.0
+        with:
+          node-version: 24
+      - run: bun install --frozen-lockfile
+      # Put the lockfile-pinned npm (a root devDependency) ahead of the runner's.
+      - run: echo "$PWD/node_modules/.bin" >> "$GITHUB_PATH"
+      - run: bun run lint:deps
+      - run: bun run typecheck
+      - run: bun run test
+      - run: bun --filter 'faultline' --filter 'eslint-plugin-faultline' build
+      - name: Pack unreleased packages
+        id: pack
+        # A package is released once its tag exists (faultline: v<version>,
+        # eslint-plugin-faultline: eslint-plugin-v<version>), so re-runs never
+        # try to stage a version twice.
+        run: |
+          set -euo pipefail
+          mkdir -p "$RUNNER_TEMP/tarballs"
+          releases=""
+          for spec in faultline:v eslint-plugin-faultline:eslint-plugin-v; do
+            dir="packages/${spec%%:*}"
+            version=$(node -p "require('./$dir/package.json').version")
+            tag="${spec#*:}$version"
+            if git ls-remote --exit-code --tags origin "refs/tags/$tag" >/dev/null; then
+              echo "$tag already released; skipping"
+              continue
+            fi
+            npm pack --ignore-scripts --pack-destination "$RUNNER_TEMP/tarballs" "./$dir"
+            releases="$releases $tag"
+          done
+          echo "releases=${releases# }" >> "$GITHUB_OUTPUT"
+          ls -l "$RUNNER_TEMP/tarballs"
+      - if: steps.pack.outputs.releases != ''
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+        with:
+          name: tarballs
+          path: ${{ runner.temp }}/tarballs/*.tgz
+          if-no-files-found: error
+
+  publish:
+    needs: build
+    if: needs.build.outputs.releases != ''
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    environment: npm
+    permissions:
+      contents: read
+      id-token: write
+    steps:
+      - uses: actions/checkout@df4cb1c069e1874edd31b4311f1884172cec0e10 # v6
+        with:
+          persist-credentials: false
+      - uses: oven-sh/setup-bun@0c5077e51419868618aeaa5fe8019c62421857d6 # v2
+      - uses: actions/setup-node@48b55a011bda9f5d6aeb4c2d9c7362e8dae4041e # v6.4.0
+        with:
+          node-version: 24
+          registry-url: https://registry.npmjs.org
+      # Only the lockfile-pinned npm runs in this job; no dependency scripts.
+      - run: bun install --frozen-lockfile --ignore-scripts
+      - run: echo "$PWD/node_modules/.bin" >> "$GITHUB_PATH"
+      - uses: actions/download-artifact@3e5f45b2cfb9172054b4087a40e8e0b5a5461e7c # v8.0.1
+        with:
+          name: tarballs
+          path: ${{ runner.temp }}/tarballs
+      - name: Stage to npm
+        # Provenance is generated automatically through trusted publishing.
+        # Prerelease versions go to the "beta" dist-tag so they never become
+        # what a plain `npm install` resolves to.
+        run: |
+          set -euo pipefail
+          for tarball in "$RUNNER_TEMP"/tarballs/*.tgz; do
+            version=$(tar -xzOf "$tarball" package/package.json | node -p 'JSON.parse(require("fs").readFileSync(0, "utf8")).version')
+            case "$version" in
+              *-*) dist_tag=beta ;;
+              *) dist_tag=latest ;;
+            esac
+            echo "staging $(basename "$tarball") under dist-tag $dist_tag"
+            npm stage publish "$tarball" --tag "$dist_tag"
+          done
+          echo "::notice::Staged to npm. Approve with 2FA (npm stage approve <id>, or on npmjs.com) to make the versions installable."
+
+  tag:
+    needs: [build, publish]
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    permissions:
+      contents: write
+    steps:
+      - name: Create release tags and GitHub releases
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          RELEASES: ${{ needs.build.outputs.releases }}
+        run: |
+          set -euo pipefail
+          for tag in $RELEASES; do
+            gh release create "$tag" --repo "$GITHUB_REPOSITORY" --target "$GITHUB_SHA" \
+              --title "$tag" --generate-notes
+          done
