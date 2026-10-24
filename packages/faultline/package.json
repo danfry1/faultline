@@ -9,6 +9,9 @@
   "main": "./dist/index.cjs",
   "module": "./dist/index.js",
   "types": "./dist/index.d.ts",
+  "bin": {
+    "faultline": "./dist/cli/index.js"
+  },
   "exports": {
     ".": {
       "import": {
@@ -38,7 +41,7 @@
     "CHANGELOG.md"
   ],
   "scripts": {
-    "build": "tsdown src/index.ts src/test.ts --format esm,cjs --dts",
+    "build": "tsdown src/index.ts src/test.ts --format esm,cjs --dts && tsdown src/cli/index.ts --format esm --no-dts --out-dir dist/cli",
     "test": "bun test",
     "typecheck": "bunx tsc --noEmit",
     "prepublishOnly": "bun run typecheck && bun run test && bun run build"
@@ -51,6 +54,8 @@
     "typed-errors",
     "type-safe",
     "error-system",
+    "cli",
+    "static-analysis",
     "faultline"
   ],
   "engines": {
@@ -66,8 +71,17 @@
   "publishConfig": {
     "access": "public"
   },
+  "peerDependencies": {
+    "typescript": ">=5.0.0"
+  },
+  "peerDependenciesMeta": {
+    "typescript": {
+      "optional": true
+    }
+  },
   "devDependencies": {
     "@types/bun": "1.3.10",
+    "@types/node": "25.5.0",
     "tsdown": "0.9.9",
     "typescript": "^5.9.3"
   }

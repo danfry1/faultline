@@ -413,6 +413,8 @@ Three preset configs matching the adoption stages:
 npx faultline <command> [path] [--json]
 ```
 
+The CLI ships with the `faultline` package and statically analyzes your project with the TypeScript compiler, so it needs `typescript` installed in the project (an optional peer dependency; the library itself does not use it).
+
 | Command | Description |
 |---|---|
 | `catalog` | List all error definitions in the project |

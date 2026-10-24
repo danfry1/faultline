@@ -15,7 +15,6 @@
 
 - [ ] `faultline`
 - [ ] `eslint-plugin-faultline`
-- [ ] `faultline-cli`
 - [ ] `faultline-vscode`
 
 ## Checklist

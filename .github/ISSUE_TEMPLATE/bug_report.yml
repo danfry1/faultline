@@ -10,7 +10,6 @@ body:
       options:
         - faultline
         - eslint-plugin-faultline
-        - faultline-cli
         - faultline-vscode
         - not sure
     validations:

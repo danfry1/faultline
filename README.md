@@ -476,6 +476,8 @@ Three preset configs matching the adoption stages:
 npx faultline <command> [path] [--json]
 ```
 
+The CLI ships with the `faultline` package and statically analyzes your project with the TypeScript compiler, so it needs `typescript` installed in the project (an optional peer dependency; the library itself does not use it).
+
 | Command | Description |
 |---|---|
 | `catalog` | List all error definitions in the project |
@@ -583,9 +585,8 @@ This is a Bun monorepo:
 
 | Package | Published as | Status |
 |---|---|---|
-| [`packages/faultline`](./packages/faultline) | [`faultline`](https://www.npmjs.com/package/faultline) | stable |
+| [`packages/faultline`](./packages/faultline) | [`faultline`](https://www.npmjs.com/package/faultline) (library + CLI) | stable (CLI beta) |
 | [`packages/eslint-plugin-faultline`](./packages/eslint-plugin-faultline) | [`eslint-plugin-faultline`](https://www.npmjs.com/package/eslint-plugin-faultline) | stable |
-| [`packages/faultline-cli`](./packages/faultline-cli) | `faultline-cli` | beta |
 | [`packages/faultline-vscode`](./packages/faultline-vscode) | — | experimental |
 
 ```bash

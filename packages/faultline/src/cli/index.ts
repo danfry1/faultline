@@ -2,12 +2,25 @@
 
 import * as path from 'node:path';
 
-import {
-  analyzeProject,
-  renderCatalog,
-  renderDiagnostics,
-  renderGraph,
-} from './tooling';
+// `typescript` is an optional peer dependency of `faultline`: only the CLI
+// needs it, so the tooling (which imports it) is loaded on demand.
+async function loadTooling(): Promise<typeof import('./tooling') | undefined> {
+  try {
+    return await import('./tooling');
+  } catch (error) {
+    const code = (error as { code?: unknown }).code;
+    if (
+      (code === 'ERR_MODULE_NOT_FOUND' || code === 'MODULE_NOT_FOUND') &&
+      String((error as Error).message).includes('typescript')
+    ) {
+      console.error(
+        'The faultline CLI needs the TypeScript compiler. Install it in your project:\n\n  npm install -D typescript\n',
+      );
+      return undefined;
+    }
+    throw error;
+  }
+}
 
 type Command = 'catalog' | 'graph' | 'lint' | 'doctor';
 
@@ -63,6 +76,13 @@ async function main(): Promise<void> {
     process.exitCode = 1;
     return;
   }
+
+  const tooling = await loadTooling();
+  if (!tooling) {
+    process.exitCode = 1;
+    return;
+  }
+  const { analyzeProject, renderCatalog, renderDiagnostics, renderGraph } = tooling;
 
   const analysis = analyzeProject({ cwd });
 
