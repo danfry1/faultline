@@ -1,0 +1,17 @@
+name: OpenSSF Scorecard
+
+on:
+  push:
+    branches: [main]
+  schedule:
+    - cron: '0 6 * * 1' # Monday 6am UTC
+  workflow_dispatch:
+
+permissions: read-all
+
+jobs:
+  scorecard:
+    permissions:
+      security-events: write
+      id-token: write
+    uses: danfry1/standards/.github/workflows/scorecard.yml@v1

@@ -39,6 +39,17 @@ bun run build        # build all packages
 
 Per-package: `bun --filter '<package-name>' <script>`.
 
+## Dependencies
+
+`devDependencies` are pinned to exact versions (supply-chain hardening) and enforced by [syncpack](https://github.com/JamieMason/syncpack):
+
+```bash
+bun run lint:deps   # fails if a dev dependency isn't pinned (also runs in CI)
+bun run fix:deps    # auto-pin / reconcile versions
+```
+
+After adding or bumping a dependency, run `bun run fix:deps` and commit the result. Runtime and peer dependencies intentionally keep ranges. Note that installs are subject to a 7-day `minimumReleaseAge` gate (`bunfig.toml`), so a just-published version may be refused until it ages in — see [SECURITY.md](./SECURITY.md#supply-chain-hardening).
+
 ## Tests
 
 - Use Bun's test runner (`bun:test`).

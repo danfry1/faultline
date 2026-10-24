@@ -12,22 +12,31 @@
       }
     }
   },
-  "files": ["dist", "README.md", "LICENSE"],
+  "files": [
+    "dist",
+    "README.md",
+    "LICENSE"
+  ],
   "scripts": {
     "build": "tsdown src/index.ts --format cjs --dts",
     "test": "bun test",
     "typecheck": "bunx tsc --noEmit",
     "prepublishOnly": "bun run typecheck && bun run test && bun run build"
   },
-  "publishConfig": { "access": "public" },
+  "publishConfig": {
+    "access": "public"
+  },
   "sideEffects": false,
-  "engines": { "node": ">=18.0.0" },
+  "engines": {
+    "node": ">=18.0.0"
+  },
   "repository": {
     "type": "git",
     "url": "https://github.com/danfry1/faultline.git",
     "directory": "packages/eslint-plugin-faultline"
   },
   "homepage": "https://danfry1.github.io/faultline",
+  "bugs": "https://github.com/danfry1/faultline/issues",
   "author": "Daniel Fry",
   "license": "MIT",
   "peerDependencies": {
@@ -37,10 +46,18 @@
   },
   "devDependencies": {
     "@typescript-eslint/utils": "^8.0.0",
-    "@typescript-eslint/rule-tester": "^8.0.0",
+    "@typescript-eslint/rule-tester": "8.0.0",
     "eslint": "^9.0.0",
-    "tsdown": "^0.9.0",
+    "tsdown": "0.9.9",
     "typescript": "^5.9.3"
   },
-  "keywords": ["eslint", "eslintplugin", "typescript", "errors", "error-handling", "type-safe", "faultline"]
+  "keywords": [
+    "eslint",
+    "eslintplugin",
+    "typescript",
+    "errors",
+    "error-handling",
+    "type-safe",
+    "faultline"
+  ]
 }

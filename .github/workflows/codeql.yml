@@ -1,0 +1,18 @@
+name: CodeQL
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+  schedule:
+    - cron: '0 6 * * 1' # Monday 6am UTC
+
+permissions: read-all
+
+jobs:
+  codeql:
+    permissions:
+      security-events: write
+      contents: read
+    uses: danfry1/standards/.github/workflows/codeql.yml@v1

@@ -37,6 +37,7 @@
     "directory": "packages/faultline-cli"
   },
   "homepage": "https://danfry1.github.io/faultline",
+  "bugs": "https://github.com/danfry1/faultline/issues",
   "publishConfig": {
     "access": "public"
   },
@@ -44,8 +45,8 @@
     "typescript": "^5.9.3"
   },
   "devDependencies": {
-    "@types/bun": "^1.3.10",
-    "@types/node": "^25.5.0",
-    "tsdown": "^0.9.0"
+    "@types/bun": "1.3.10",
+    "@types/node": "25.5.0",
+    "tsdown": "0.9.9"
   }
 }
