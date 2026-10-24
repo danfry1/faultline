@@ -35,26 +35,21 @@
     "packages/faultline": {
       "name": "faultline",
       "version": "0.2.0",
-      "devDependencies": {
-        "@types/bun": "1.3.10",
-        "tsdown": "0.9.9",
-        "typescript": "^5.9.3",
-      },
-    },
-    "packages/faultline-cli": {
-      "name": "faultline-cli",
-      "version": "0.1.0",
       "bin": {
-        "faultline": "./dist/index.js",
-      },
-      "dependencies": {
-        "typescript": "^5.9.3",
+        "faultline": "./dist/cli/index.js",
       },
       "devDependencies": {
         "@types/bun": "1.3.10",
         "@types/node": "25.5.0",
         "tsdown": "0.9.9",
+        "typescript": "^5.9.3",
       },
+      "peerDependencies": {
+        "typescript": ">=5.0.0",
+      },
+      "optionalPeers": [
+        "typescript",
+      ],
     },
     "packages/faultline-vscode": {
       "name": "faultline-vscode",
@@ -404,8 +399,6 @@
     "fastq": ["fastq@1.20.1", "", { "dependencies": { "reusify": "^1.0.4" } }, "sha512-GGToxJ/w1x32s/D2EKND7kTil4n8OVk/9mycTc4VDza13lOvpUZTGX3mFSCtV9ksdGBVzvsyAVLM6mHFThxXxw=="],
 
     "faultline": ["faultline@workspace:packages/faultline"],
-
-    "faultline-cli": ["faultline-cli@workspace:packages/faultline-cli"],
 
     "faultline-vscode": ["faultline-vscode@workspace:packages/faultline-vscode"],
 

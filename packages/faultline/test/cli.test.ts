@@ -1,7 +1,7 @@
 import { describe, expect, test } from 'bun:test';
 import * as path from 'node:path';
 
-const cliPath = path.resolve(import.meta.dir, '../src/index.ts');
+const cliPath = path.resolve(import.meta.dir, '../src/cli/index.ts');
 
 const sampleFixturePath = path.resolve(
   import.meta.dir,

@@ -16,11 +16,11 @@
     "lint:deps": "syncpack lint",
     "fix:deps": "syncpack fix",
     "format": "oxlint --fix .",
-    "cli": "bun run packages/faultline-cli/src/index.ts",
+    "cli": "bun run packages/faultline/src/cli/index.ts",
     "changeset": "changeset",
     "changeset:status": "changeset status --since=main",
     "version-packages": "changeset version",
-    "release": "bun --filter 'faultline' --filter 'eslint-plugin-faultline' --filter 'faultline-cli' build && changeset publish"
+    "release": "bun --filter 'faultline' --filter 'eslint-plugin-faultline' build && changeset publish"
   },
   "devDependencies": {
     "@changesets/cli": "2.31.0",

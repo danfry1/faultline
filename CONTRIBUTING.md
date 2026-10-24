@@ -19,9 +19,8 @@ bun install
 
 | Package | Published as | Status |
 |---|---|---|
-| `packages/faultline` | `faultline` | stable |
+| `packages/faultline` | `faultline` (library + `faultline` CLI) | stable (CLI beta) |
 | `packages/eslint-plugin-faultline` | `eslint-plugin-faultline` | stable |
-| `packages/faultline-cli` | `faultline-cli` | beta |
 | `packages/faultline-vscode` | — (Marketplace, not npm) | experimental |
 
 `examples/`, `playground/`, and `test/fixtures/` are development-only and are not published.

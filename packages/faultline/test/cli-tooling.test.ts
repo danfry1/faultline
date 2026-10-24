@@ -6,7 +6,7 @@ import {
   renderCatalog,
   renderDiagnostics,
   renderGraph,
-} from '../src/tooling';
+} from '../src/cli/tooling';
 
 const fixturePath = path.resolve(
   import.meta.dir,
